@@ -10,9 +10,10 @@ import {
   ChevronRight,
   Code2,
   Download,
+  ExternalLink,
   FileCode2,
   GitBranch,
-  
+  Globe,
   Layers3,
   Link2,
   LockKeyhole,
@@ -1795,15 +1796,129 @@ function Overview({
               {/* TAB 1: GITHUB */}
               {importMode === "github" && (
                 <div>
+                  {/* DIRECT GITHUB OPEN & SEARCH BAR */}
                   <div
                     style={{
-                      fontSize: "11px",
-                      color: "#8aa294",
-                      marginBottom: "10px",
-                      lineHeight: "1.4",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      background: "rgba(0, 255, 136, 0.05)",
+                      border: "1px solid #1a3c29",
+                      borderRadius: "10px",
+                      padding: "10px 14px",
+                      marginBottom: "14px",
+                      flexWrap: "wrap",
                     }}
                   >
-                    Enter a public GitHub repository URL or direct ZIP archive link. SecurePatch fetches the repository into a secure sandbox, detects vulnerabilities live, and prepares automated AST fixes.
+                    <div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          color: "#00ff88",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          fontFamily: "DM Mono, monospace",
+                        }}
+                      >
+                        <Globe size={15} />
+                        <span>FIND REPOSITORIES DIRECTLY ON GITHUB</span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "#7e9789",
+                          marginTop: "2px",
+                        }}
+                      >
+                        Click below to open GitHub, search any project, copy its link and paste here to audit:
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(
+                            "https://github.com/search?q=language%3Apython&type=repositories",
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#081b12",
+                          border: "1px solid #00ff88",
+                          color: "#00ff88",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <ExternalLink size={13} />
+                        <span>Open GitHub Search ↗</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(
+                            "https://github.com/search?q=vulnerable+python+app&type=repositories",
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#07130c",
+                          border: "1px solid #254633",
+                          color: "#8cd5a8",
+                          padding: "6px 10px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                        }}
+                        title="Search vulnerable test benchmark repositories on GitHub"
+                      >
+                        <Search size={13} />
+                        <span>Vulnerable Apps ↗</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(
+                            "https://github.com/Tushar-1208-cyber?tab=repositories",
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                        }
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          background: "#07130c",
+                          border: "1px solid #254633",
+                          color: "#8cd5a8",
+                          padding: "6px 10px",
+                          borderRadius: "6px",
+                          fontSize: "11px",
+                          cursor: "pointer",
+                        }}
+                        title="View your own GitHub profile and repositories"
+                      >
+                        <span>My Profile (Tushar) ↗</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div
@@ -1817,14 +1932,74 @@ function Overview({
                       className="repo-input"
                       style={{
                         flex: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        position: "relative",
                       }}
                     >
-                      <GitBranch size={17} />
+                      <GitBranch size={17} style={{ marginLeft: "10px", color: "#617d6e", flexShrink: 0 }} />
                       <input
                         value={githubUrl}
                         onChange={(e) => setGithubUrl(e.target.value)}
-                        placeholder="https://github.com/owner/repository (or .git / .zip release archive URL)"
+                        placeholder="Paste any GitHub repository URL here (e.g. https://github.com/owner/repo)"
+                        style={{
+                          flex: 1,
+                          paddingRight: githubUrl ? "75px" : "40px",
+                        }}
                       />
+
+                      {/* CLEAR BUTTON */}
+                      {githubUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setGithubUrl("")}
+                          style={{
+                            position: "absolute",
+                            right: "78px",
+                            background: "transparent",
+                            border: "none",
+                            color: "#6b8376",
+                            fontSize: "13px",
+                            cursor: "pointer",
+                            padding: "2px 6px",
+                          }}
+                          title="Clear input"
+                        >
+                          ✕
+                        </button>
+                      )}
+
+                      {/* PASTE BUTTON */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            if (navigator?.clipboard?.readText) {
+                              const text = await navigator.clipboard.readText();
+                              if (text && text.trim()) {
+                                setGithubUrl(text.trim());
+                              }
+                            }
+                          } catch (err) {
+                            console.warn("Clipboard access denied", err);
+                          }
+                        }}
+                        style={{
+                          position: "absolute",
+                          right: "6px",
+                          background: "#0e2017",
+                          border: "1px solid #234733",
+                          color: "#84e3a9",
+                          borderRadius: "5px",
+                          padding: "4px 8px",
+                          fontSize: "10px",
+                          cursor: "pointer",
+                          fontFamily: "DM Mono, monospace",
+                        }}
+                        title="Paste URL copied from GitHub"
+                      >
+                        📋 Paste
+                      </button>
                     </div>
 
                     <button
