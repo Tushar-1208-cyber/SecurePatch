@@ -1,0 +1,4 @@
+model_name,runs,patches_generated,generation_failures,syntax_valid,vulnerability_removed,security_passed,regression_passed,verified,rejected,avg_latency_seconds,avg_input_tokens,avg_output_tokens,avg_total_tokens,generation_success_rate_%,syntax_valid_rate_%,security_fix_rate_%,regression_pass_rate_%,verified_rate_%,conditional_verified_rate_%
+Codestral 22B,10,6,4,6,5,5,6,5,1,86.29,2808.0,92.0,1740.0,60.0,60.0,50.0,60.0,50.0,83.33
+Llama 3.1 8B,10,10,0,10,7,7,10,7,3,34.58,2080.1,46.4,2126.5,100.0,100.0,70.0,100.0,70.0,70.0
+Qwen2.5-Coder 7B,10,10,0,10,6,6,10,6,4,38.92,2142.5,79.6,2222.1,100.0,100.0,60.0,100.0,60.0,60.0
