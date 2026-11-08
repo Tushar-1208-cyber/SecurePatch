@@ -1,0 +1,10 @@
+severity,model_name,runs,generated,security_fixed,regression_passed,verified,errors,avg_latency,verified_rate_%,conditional_verified_rate_%
+HIGH,Codestral 22B,3,3,3,3,3,0,96.66,100.0,100.0
+HIGH,Llama 3.1 8B,3,3,2,3,2,0,36.0,66.67,66.67
+HIGH,Qwen2.5-Coder 7B,3,3,2,3,2,0,40.39,66.67,66.67
+LOW,Codestral 22B,1,1,0,1,0,0,95.76,0.0,0.0
+LOW,Llama 3.1 8B,1,1,0,1,0,0,34.47,0.0,0.0
+LOW,Qwen2.5-Coder 7B,1,1,0,1,0,0,23.68,0.0,0.0
+MEDIUM,Codestral 22B,6,2,2,2,2,4,66.0,33.33,100.0
+MEDIUM,Llama 3.1 8B,6,6,5,6,5,0,33.88,83.33,83.33
+MEDIUM,Qwen2.5-Coder 7B,6,6,4,6,4,0,40.72,66.67,66.67
