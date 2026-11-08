@@ -1,0 +1,4 @@
+model_name,avg_latency_seconds,median_latency_seconds,min_latency_seconds,max_latency_seconds,avg_input_tokens,avg_output_tokens,avg_total_tokens
+Codestral 22B,86.29,79.13,56.43,142.89,2808.0,92.0,1740.0
+Llama 3.1 8B,34.58,35.21,28.23,40.65,2080.1,46.4,2126.5
+Qwen2.5-Coder 7B,38.92,38.71,23.68,61.8,2142.5,79.6,2222.1
