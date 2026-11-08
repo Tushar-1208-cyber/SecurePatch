@@ -1,0 +1,3 @@
+failure_category,count
+"Patch generated and tests passed, but vulnerability remained",8
+Generation/runtime failure,4
