@@ -1,0 +1,4 @@
+model_name,total_runs,successful_generations,generation_errors,rejected_patches,verified_patches,generation_success_rate_%,runtime_failure_rate_%,conditional_patch_success_%
+Codestral 22B,10,6,4,1,5,60.0,40.0,83.33
+Llama 3.1 8B,10,10,0,3,7,100.0,0.0,70.0
+Qwen2.5-Coder 7B,10,10,0,4,6,100.0,0.0,60.0
