@@ -1,0 +1,11 @@
+baseline,vulnerability,severity,file,line,patch_generated,syntax_valid,vulnerability_removed,regression_passed,tests_passed,test_errors,final_verdict,latency_seconds
+rule_based,B102,MEDIUM,benchmark_vulnerabilities.py,30,False,True,True,True,19,0,REJECTED,4.018
+rule_based,B105,LOW,benchmark_vulnerabilities.py,111,False,True,True,True,19,0,REJECTED,3.152
+rule_based,B108,MEDIUM,benchmark_vulnerabilities.py,97,True,True,True,True,19,0,VERIFIED,3.06
+rule_based,B202,HIGH,benchmark_vulnerabilities.py,86,False,True,True,True,19,0,REJECTED,3.085
+rule_based,B301,MEDIUM,services/file_service.py,33,False,True,True,True,19,0,REJECTED,3.154
+rule_based,B307,MEDIUM,benchmark_vulnerabilities.py,21,True,True,True,True,19,0,VERIFIED,3.107
+rule_based,B324,HIGH,benchmark_vulnerabilities.py,40,True,True,True,True,19,0,VERIFIED,3.381
+rule_based,B506,MEDIUM,benchmark_vulnerabilities.py,51,True,True,True,True,19,0,VERIFIED,3.405
+rule_based,B602,HIGH,services/command_service.py,18,True,True,True,True,19,0,VERIFIED,3.648
+rule_based,B608,MEDIUM,benchmark_vulnerabilities.py,67,False,True,True,True,19,0,REJECTED,3.607
