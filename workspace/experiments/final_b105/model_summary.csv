@@ -1,0 +1,4 @@
+model,runs,patch_generation_rate,syntax_valid_rate,security_fix_rate,regression_pass_rate,verified_rate,avg_latency_seconds,median_latency_seconds,avg_output_tokens
+qwen2.5-coder,1,100.0,100.0,0.0,100.0,0.0,23.68,23.68,35
+llama3.1,1,100.0,100.0,0.0,100.0,0.0,34.47,34.47,30
+codestral,1,100.0,100.0,0.0,100.0,0.0,95.76,95.76,43
