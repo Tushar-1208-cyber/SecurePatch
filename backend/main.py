@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from urllib.parse import urlparse
+import urllib.request
 import asyncio
 import ast
 import json
@@ -1351,9 +1352,36 @@ def run_security_validation(
     }
 
 # =========================================================
-# REPOSITORY IMPORT
-
+# REPOSITORY IMPORT & GITHUB CLONE / ZIP DOWNLOAD
 # =========================================================
+
+def download_github_zip_archive(zip_url: str, destination_dir: Path) -> Path:
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    temp_zip = destination_dir / f"download_{uuid.uuid4().hex[:6]}.zip"
+    req = urllib.request.Request(
+        zip_url,
+        headers={"User-Agent": "SecurePatch/1.0", "Accept": "*/*"}
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        temp_zip.write_bytes(resp.read())
+
+    try:
+        with zipfile.ZipFile(temp_zip, "r") as archive:
+            dest_root = destination_dir.resolve()
+            for member in archive.infolist():
+                member_path = (destination_dir / member.filename).resolve()
+                try:
+                    member_path.relative_to(dest_root)
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="Unsafe ZIP structure detected.")
+            archive.extractall(destination_dir)
+    finally:
+        temp_zip.unlink(missing_ok=True)
+
+    extracted_items = [item for item in destination_dir.iterdir() if item.is_dir() and item.name != ".git"]
+    if len(extracted_items) == 1:
+        return extracted_items[0]
+    return destination_dir
 
 
 @app.post("/api/repositories/github")
@@ -1368,34 +1396,54 @@ def import_github_repository(data: dict):
     if parsed.scheme not in {"http", "https"}:
         raise HTTPException(
             status_code=400,
-            detail="Invalid GitHub repository URL.",
+            detail="Invalid GitHub repository URL. Must start with https:// or http://",
         )
-    if parsed.netloc.lower() not in {
-        "github.com",
-        "www.github.com",
-    }:
+    if not any(gh in parsed.netloc.lower() for gh in ["github.com", "codeload.github.com"]):
         raise HTTPException(
             status_code=400,
-            detail="Only GitHub repository URLs are currently supported.",
+            detail="Only GitHub repository or archive URLs are currently supported.",
         )
     parts = parsed.path.strip("/").split("/")
     if len(parts) < 2:
         raise HTTPException(
             status_code=400,
-            detail="Invalid GitHub repository URL.",
+            detail="Invalid GitHub repository URL. Expected format: https://github.com/owner/repository",
         )
     owner = parts[0]
     repo_name = parts[1]
     if repo_name.endswith(".git"):
         repo_name = repo_name[:-4]
-    clean_url = (
-        f"https://github.com/{owner}/{repo_name}.git"
-    )
+
     repo_id = uuid.uuid4().hex[:8]
     destination = (
         REPOSITORY_ROOT
         / f"{owner}_{repo_name}_{repo_id}"
     )
+
+    # 1. Direct ZIP Archive URL
+    if url.lower().endswith(".zip") or "/archive/" in url or "/releases/" in url:
+        try:
+            actual_dir = download_github_zip_archive(url, destination)
+            py_files = [p for p in actual_dir.rglob("*.py") if not any(x in p.parts for x in [".git", "venv", ".venv", "__pycache__"])]
+            return {
+                "success": True,
+                "name": repo_name,
+                "source": "GitHub (ZIP Archive)",
+                "repo_path": str(actual_dir),
+                "file_count": len(py_files),
+                "message": f"GitHub ZIP archive for '{repo_name}' imported successfully ({len(py_files)} Python modules detected).",
+            }
+        except Exception as exc:
+            if destination.exists():
+                shutil.rmtree(destination, ignore_errors=True)
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to download or extract GitHub ZIP archive: {str(exc)}",
+            )
+
+    # 2. Standard GitHub repository URL
+    clean_url = f"https://github.com/{owner}/{repo_name}.git"
+    cloned_ok = False
     try:
         result = subprocess.run(
             [
@@ -1412,29 +1460,42 @@ def import_github_repository(data: dict):
             errors="replace",
             timeout=120,
         )
-        if result.returncode != 0:
+        if result.returncode == 0:
+            cloned_ok = True
+    except Exception:
+        cloned_ok = False
+
+    # 3. Fallback to GitHub codeload ZIP if git clone failed
+    actual_dir = destination
+    if not cloned_ok:
+        zip_fallback_urls = [
+            f"https://codeload.github.com/{owner}/{repo_name}/zip/refs/heads/main",
+            f"https://codeload.github.com/{owner}/{repo_name}/zip/refs/heads/master",
+        ]
+        downloaded = False
+        for zip_url in zip_fallback_urls:
+            try:
+                actual_dir = download_github_zip_archive(zip_url, destination)
+                downloaded = True
+                break
+            except Exception:
+                continue
+        if not downloaded:
             if destination.exists():
-                shutil.rmtree(destination)
+                shutil.rmtree(destination, ignore_errors=True)
             raise HTTPException(
                 status_code=400,
-                detail=(
-                    "Could not clone repository. "
-                    + result.stderr[-1000:]
-                ),
+                detail=f"Could not clone or download GitHub repository '{owner}/{repo_name}'. Please verify the repository exists and is public.",
             )
-    except subprocess.TimeoutExpired:
-        if destination.exists():
-            shutil.rmtree(destination)
-        raise HTTPException(
-            status_code=408,
-            detail="Repository clone timed out.",
-        )
+
+    py_files = [p for p in actual_dir.rglob("*.py") if not any(x in p.parts for x in [".git", "venv", ".venv", "__pycache__"])]
     return {
         "success": True,
         "name": repo_name,
-        "source": "github",
-        "repo_path": str(destination),
-        "message": "GitHub repository imported successfully.",
+        "source": "GitHub",
+        "repo_path": str(actual_dir),
+        "file_count": len(py_files),
+        "message": f"GitHub repository '{repo_name}' imported successfully ({len(py_files)} Python modules detected).",
     }
 
 
@@ -1660,57 +1721,86 @@ async def live_scan_stream(url: str = None, repo_path: str = None):
             target_path = REPOSITORY_ROOT / f"{owner}_{repo_name}_{repo_id}"
             source_type = "GitHub"
 
-            yield sse({
-                "type": "log",
-                "level": "info",
-                "stage": "CLONE",
-                "message": f"Cloning repository '{owner}/{repo_name}' into secure workspace sandbox...",
-                "progress": 15,
-            })
-            await asyncio.sleep(0.4)
-
-            def do_clone():
-                return subprocess.run(
-                    ["git", "clone", "--depth", "1", clean_url, str(target_path)],
-                    capture_output=True,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    timeout=120,
-                )
-
-            try:
-                clone_res = await asyncio.to_thread(do_clone)
-                if clone_res.returncode != 0:
+            # Check if direct ZIP link
+            if github_url.lower().endswith(".zip") or "/archive/" in github_url or "/releases/" in github_url:
+                yield sse({
+                    "type": "log",
+                    "level": "info",
+                    "stage": "DOWNLOAD",
+                    "message": f"Downloading repository ZIP archive directly from GitHub...",
+                    "progress": 15,
+                })
+                try:
+                    target_path = await asyncio.to_thread(download_github_zip_archive, github_url, target_path)
+                except Exception as exc:
                     yield sse({
                         "type": "error",
                         "stage": "ERROR",
-                        "message": f"Git clone failed: {clone_res.stderr[-300:].strip() or 'Unknown clone error'}",
+                        "message": f"Failed to download/extract GitHub ZIP: {str(exc)}",
                         "progress": 0,
                     })
                     return
-            except subprocess.TimeoutExpired:
+            else:
                 yield sse({
-                    "type": "error",
-                    "stage": "ERROR",
-                    "message": "Git clone operation timed out after 120 seconds.",
-                    "progress": 0,
+                    "type": "log",
+                    "level": "info",
+                    "stage": "CLONE",
+                    "message": f"Cloning repository '{owner}/{repo_name}' into secure workspace sandbox...",
+                    "progress": 15,
                 })
-                return
-            except Exception as exc:
-                yield sse({
-                    "type": "error",
-                    "stage": "ERROR",
-                    "message": f"Git clone execution error: {str(exc)}",
-                    "progress": 0,
-                })
-                return
+                await asyncio.sleep(0.35)
+
+                def do_clone():
+                    return subprocess.run(
+                        ["git", "clone", "--depth", "1", clean_url, str(target_path)],
+                        capture_output=True,
+                        text=True,
+                        encoding="utf-8",
+                        errors="replace",
+                        timeout=120,
+                    )
+
+                cloned_ok = False
+                try:
+                    clone_res = await asyncio.to_thread(do_clone)
+                    if clone_res.returncode == 0:
+                        cloned_ok = True
+                except Exception:
+                    cloned_ok = False
+
+                if not cloned_ok:
+                    yield sse({
+                        "type": "log",
+                        "level": "warning",
+                        "stage": "CLONE",
+                        "message": "Git clone encountered network/auth restriction. Falling back to direct GitHub ZIP archive download...",
+                        "progress": 20,
+                    })
+                    fallback_ok = False
+                    for zip_fallback in [
+                        f"https://codeload.github.com/{owner}/{repo_name}/zip/refs/heads/main",
+                        f"https://codeload.github.com/{owner}/{repo_name}/zip/refs/heads/master",
+                    ]:
+                        try:
+                            target_path = await asyncio.to_thread(download_github_zip_archive, zip_fallback, target_path)
+                            fallback_ok = True
+                            break
+                        except Exception:
+                            continue
+                    if not fallback_ok:
+                        yield sse({
+                            "type": "error",
+                            "stage": "ERROR",
+                            "message": f"Could not clone or download GitHub repository '{owner}/{repo_name}'. Please verify the repository exists and is public.",
+                            "progress": 0,
+                        })
+                        return
 
             yield sse({
                 "type": "log",
                 "level": "success",
                 "stage": "CLONE",
-                "message": f"Repository '{repo_name}' cloned successfully.",
+                "message": f"Repository '{repo_name}' retrieved successfully.",
                 "progress": 30,
             })
             await asyncio.sleep(0.3)
