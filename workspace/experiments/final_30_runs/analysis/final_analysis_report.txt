@@ -1,0 +1,49 @@
+======================================================================
+SECUREPATCH — FINAL MULTI-LLM EXPERIMENT ANALYSIS
+======================================================================
+
+Total experimental runs: 30
+Unique vulnerabilities: 10
+Models evaluated: 3
+
+MODELS
+----------------------------------------------------------------------
+- Qwen2.5-Coder 7B
+- Llama 3.1 8B
+- Codestral 22B
+
+OVERALL MODEL RESULTS
+----------------------------------------------------------------------
+Codestral 22B: Verified=50.00%, Security Fix=50.00%, Regression=60.00%, Generation Success=60.00%, Conditional Verified=83.33%, Avg Latency=86.29s
+Llama 3.1 8B: Verified=70.00%, Security Fix=70.00%, Regression=100.00%, Generation Success=100.00%, Conditional Verified=70.00%, Avg Latency=34.58s
+Qwen2.5-Coder 7B: Verified=60.00%, Security Fix=60.00%, Regression=100.00%, Generation Success=100.00%, Conditional Verified=60.00%, Avg Latency=38.92s
+
+KEY FINDINGS
+----------------------------------------------------------------------
+1. Highest overall verified rate: Llama 3.1 8B (70.00%).
+2. Highest conditional verified rate among successfully generated patches: Codestral 22B (83.33%).
+3. Fastest average generation: Llama 3.1 8B (34.58s).
+4. Lowest average token usage: Codestral 22B (1740.00 tokens).
+
+GENERATION RELIABILITY
+----------------------------------------------------------------------
+Codestral 22B: 6/10 generations successful, 4 runtime failures, 83.33% verified among generated patches.
+Llama 3.1 8B: 10/10 generations successful, 0 runtime failures, 70.00% verified among generated patches.
+Qwen2.5-Coder 7B: 10/10 generations successful, 0 runtime failures, 60.00% verified among generated patches.
+
+RESEARCH INTERPRETATION
+----------------------------------------------------------------------
+The experiment evaluates locally deployed LLMs for automated Python security vulnerability repair using the same repository, vulnerability instances, context, and automated validation pipeline.
+Final verification requires both successful regression testing and removal of the targeted Bandit vulnerability.
+Therefore, syntactically valid patches or patches that pass regression tests are not automatically considered secure.
+Generation/runtime failures are separated from patch-quality failures because a model may fail to produce a patch before its security-repair capability can be evaluated.
+
+IMPORTANT LIMITATION
+----------------------------------------------------------------------
+This experiment contains 30 runs across 10 vulnerability instances and 3 locally deployed LLMs. The results indicate performance on this benchmark and should not be generalized to all Python vulnerabilities or repositories.
+
+FINAL RESEARCH CONCLUSION
+----------------------------------------------------------------------
+Across the 30-run evaluation, the models demonstrated different levels of secure patch generation and runtime reliability. Llama 3.1 8B achieved the highest overall verified patch rate at 70.00%. The comparison shows that model selection affects both the quality and reliability of automated security patch generation.
+The results also demonstrate the importance of automated security re-scanning. A generated patch may be syntactically valid and pass regression tests while still failing to remove the targeted security vulnerability.
+Consequently, SecurePatch uses a verification pipeline combining patch application, regression testing, and Bandit re-scanning before accepting a patch as VERIFIED.
