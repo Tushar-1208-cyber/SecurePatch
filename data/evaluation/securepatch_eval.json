@@ -1,0 +1,79 @@
+[
+  {
+    "id": "SP-B602-001",
+    "rule": "B602",
+    "severity": "HIGH",
+    "cwe": "CWE-78",
+    "file": "services/command_service.py",
+    "function": "execute",
+    "vulnerability": "subprocess call with shell=True",
+    "expected_security_property": "Do not execute untrusted command text through a shell.",
+    "expected_validation": "Target B602 finding removed and regression tests pass."
+  },
+  {
+    "id": "SP-B301-001",
+    "rule": "B301",
+    "severity": "MEDIUM",
+    "cwe": "CWE-502",
+    "file": "services/file_service.py",
+    "function": "load_data",
+    "vulnerability": "unsafe pickle deserialization",
+    "expected_security_property": "Do not deserialize untrusted pickle data.",
+    "expected_validation": "B301 removed without breaking intended loading behavior."
+  },
+  {
+    "id": "SP-B105-001",
+    "rule": "B105",
+    "severity": "LOW",
+    "cwe": "CWE-798",
+    "file": "services/auth_service.py",
+    "function": "authenticate",
+    "vulnerability": "hardcoded password or secret",
+    "expected_security_property": "Move credentials/secrets out of source code.",
+    "expected_validation": "B105 removed and authentication behavior remains valid."
+  },
+  {
+    "id": "SP-B404-001",
+    "rule": "B404",
+    "severity": "LOW",
+    "cwe": "CWE-78",
+    "file": "services/command_service.py",
+    "function": "execute",
+    "vulnerability": "subprocess module import",
+    "expected_security_property": "Use subprocess only with safe argument handling and no shell injection.",
+    "expected_validation": "Security scan contains no unsafe subprocess usage introduced by patch."
+  },
+  {
+    "id": "SP-B603-001",
+    "rule": "B603",
+    "severity": "LOW",
+    "cwe": "CWE-78",
+    "file": "services/command_service.py",
+    "function": "execute_safe",
+    "vulnerability": "subprocess call requires review",
+    "expected_security_property": "Arguments must be explicit and shell execution disabled.",
+    "expected_validation": "B603 is reviewed in context and no shell injection is possible."
+  },
+  {
+    "id": "SP-B607-001",
+    "rule": "B607",
+    "severity": "LOW",
+    "cwe": "CWE-78",
+    "file": "services/command_service.py",
+    "function": "command_exists",
+    "vulnerability": "partial executable path",
+    "expected_security_property": "Avoid ambiguous executable resolution where security-relevant.",
+    "expected_validation": "Use an explicit safe executable resolution strategy."
+  },
+  {
+    "id": "SP-B110-001",
+    "rule": "B110",
+    "severity": "LOW",
+    "cwe": "CWE-391",
+    "file": "utils/error_handler.py",
+    "function": "handle",
+    "vulnerability": "try/except/pass can hide errors",
+    "expected_security_property": "Do not silently swallow security-relevant failures.",
+    "expected_validation": "Exception handling remains observable and intentional."
+  }
+]
