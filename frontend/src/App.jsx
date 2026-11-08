@@ -406,18 +406,71 @@ function App() {
    * =========================================================
    */
 
-  async function importGitHubRepository() {
-    if (!githubUrl.trim()) {
-      setError("Enter a GitHub repository URL.");
+  async function importGitHubRepository(targetUrl = null) {
+    const finalUrl = (targetUrl || githubUrl).trim();
+    if (!finalUrl) {
+      setError("Enter a GitHub repository URL or direct ZIP link.");
       return;
     }
 
-    if (!githubUrl.includes("github.com/")) {
+    if (!finalUrl.includes("github.com/")) {
+      setError("Please enter a valid GitHub repository or archive URL.");
+      return;
+    }
+
+    setImporting(true);
+    setError("");
+
+    try {
+      const response = await fetch(`${API}/api/repositories/github`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: finalUrl }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Backend returned an invalid response.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to import GitHub repository.");
+      }
+
+      setRepoPath(data.repo_path || "");
+      setRepositoryName(data.name || finalUrl.split("/").pop());
+      setRepositorySource(data.source || "GitHub");
+
+      // Reset previous analysis
+      setFindings([]);
+      setSummary({ total: 0, high: 0, medium: 0, low: 0 });
+      setSelected(null);
+      setAnalysis(null);
+      setPatchData(null);
+      setValidation(null);
+      setStage("scan");
+      setActiveNav("Overview");
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Failed to import GitHub repository.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function liveAuditGitHubRepository(targetUrl = null) {
+    const finalUrl = (targetUrl || githubUrl).trim();
+    if (!finalUrl) {
+      setError("Enter a GitHub repository URL or direct ZIP link first.");
+      return;
+    }
+    if (!finalUrl.includes("github.com/")) {
       setError("Please enter a valid GitHub repository URL.");
       return;
     }
-
-    startLiveAudit({ url: githubUrl.trim() });
+    startLiveAudit({ url: finalUrl });
   }
 
   /*
@@ -496,6 +549,61 @@ function App() {
     } finally {
       setImporting(false);
     }
+  }
+
+  async function liveAuditUploadedRepository() {
+    if (!repoFile) {
+      setError("Choose a repository ZIP file first.");
+      return;
+    }
+
+    setImporting(true);
+    setError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", repoFile);
+
+      const response = await fetch(`${API}/api/repositories/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Backend returned an invalid response.");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Repository upload failed.");
+      }
+
+      setRepoPath(data.repo_path || "");
+      setRepositoryName(data.name || repoFile.name);
+      setRepositorySource("ZIP Upload");
+
+      startLiveAudit({ repoPath: data.repo_path });
+    } catch (err) {
+      setError(err.message || "Repository upload failed.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  function resetRepository() {
+    setRepoPath("");
+    setRepositoryName("");
+    setRepositorySource("");
+    setRepoFile(null);
+    setFindings([]);
+    setSummary({ total: 0, high: 0, medium: 0, low: 0 });
+    setSelected(null);
+    setAnalysis(null);
+    setPatchData(null);
+    setValidation(null);
+    clearLiveLogs();
   }
 
   /*
@@ -1097,8 +1205,17 @@ async function generatePatch(model = "qwen2.5-coder") {
             importGitHubRepository={
               importGitHubRepository
             }
+            liveAuditGitHubRepository={
+              liveAuditGitHubRepository
+            }
             importUploadedRepository={
               importUploadedRepository
+            }
+            liveAuditUploadedRepository={
+              liveAuditUploadedRepository
+            }
+            resetRepository={
+              resetRepository
             }
             scanning={scanning}
             scanRepository={
@@ -1486,7 +1603,10 @@ function Overview({
   repositoryName,
   repositorySource,
   importGitHubRepository,
+  liveAuditGitHubRepository,
   importUploadedRepository,
+  liveAuditUploadedRepository,
+  resetRepository,
   scanning,
   scanRepository,
   summary,
@@ -1504,6 +1624,7 @@ function Overview({
   terminalRef,
   clearLiveLogs,
 }) {
+  const [importMode, setImportMode] = useState("github"); // "github" or "zip"
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState("ALL");
   const [liveTab, setLiveTab] = useState("logs"); // "logs" or "findings"
@@ -1567,349 +1688,428 @@ function Overview({
               className="repository-import"
               style={{
                 marginTop: "20px",
-                padding: "16px",
-                border:
-                  "1px solid #20352a",
-                background:
-                  "rgba(5, 12, 9, 0.75)",
-                borderRadius: "12px",
+                padding: "18px",
+                border: "1px solid #20352a",
+                background: "rgba(5, 12, 9, 0.85)",
+                borderRadius: "14px",
               }}
             >
-
+              {/* HEADER / SELECTOR */}
               <div
-                className="import-title"
                 style={{
                   display: "flex",
-                  alignItems:
-                    "center",
-                  gap: "8px",
-                  color:
-                    "#9ee9b8",
-                  fontSize:
-                    "10px",
-                  fontFamily:
-                    "DM Mono, monospace",
-                  letterSpacing:
-                    "0.12em",
-                  textTransform:
-                    "uppercase",
-                  marginBottom:
-                    "10px",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "14px",
                 }}
               >
-                <FileCode2
-                  size={16}
-                />
-
-                <span>
-                  Repository Source
-                </span>
-              </div>
-
-              {/* GITHUB */}
-              <div
-                className="github-row"
-                style={{
-                  display: "flex",
-                  gap: "9px",
-                }}
-              >
-
                 <div
-                  className="repo-input"
                   style={{
-                    flex: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    color: "#9ee9b8",
+                    fontSize: "10px",
+                    fontFamily: "DM Mono, monospace",
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
                   }}
                 >
-
-                  <GitBranch
-                    size={18}
-                  />
-
-                  <input
-                    value={
-                      githubUrl
-                    }
-                    onChange={(e) =>
-                      setGithubUrl(
-                        e.target.value
-                      )
-                    }
-                    placeholder="https://github.com/username/repository"
-                  />
-
+                  <FileCode2 size={16} />
+                  <span>Repository Ingestion</span>
                 </div>
 
-                <button
-                  className="secondary-btn"
-                  onClick={
-                    importGitHubRepository
-                  }
-                  disabled={
-                    importing ||
-                    !githubUrl.trim()
-                  }
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: "#52655b",
+                    fontFamily: "DM Mono, monospace",
+                  }}
                 >
-                  {importing ? (
-                    <>
-                      <RefreshCw
-                        size={15}
-                        className="spin"
-                      />
-
-                      AUDITING LIVE...
-                    </>
-                  ) : (
-                    <>
-                      <Link2
-                        size={15}
-                      />
-
-                      LIVE AUDIT GITHUB
-                    </>
-                  )}
-                </button>
-
+                  LIVE SAST + AST PIPELINE
+                </div>
               </div>
 
-              {/* OR */}
+              {/* METHOD TABS */}
               <div
-                className="or-divider"
                 style={{
-                  display: "flex",
-                  alignItems:
-                    "center",
-                  gap: "10px",
-                  margin:
-                    "13px 0",
-                  color:
-                    "#52655b",
-                  fontSize:
-                    "9px",
-                  fontFamily:
-                    "DM Mono, monospace",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
+                  background: "#030805",
+                  padding: "4px",
+                  borderRadius: "10px",
+                  border: "1px solid #14241b",
+                  marginBottom: "16px",
                 }}
               >
-                <span
-                  style={{
-                    flex: 1,
-                    height: "1px",
-                    background:
-                      "#1a2921",
-                  }}
-                />
-
-                OR
-
-                <span
-                  style={{
-                    flex: 1,
-                    height: "1px",
-                    background:
-                      "#1a2921",
-                  }}
-                />
-              </div>
-
-              {/* ZIP */}
-              <div
-                className="upload-row"
-                style={{
-                  display: "flex",
-                  gap: "9px",
-                }}
-              >
-
-                <label
-                  className="upload-box"
-                  style={{
-                    flex: 1,
-                    minHeight:
-                      "43px",
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
-                    gap: "9px",
-                    padding:
-                      "0 12px",
-                    border:
-                      "1px dashed #31513f",
-                    borderRadius:
-                      "9px",
-                    background:
-                      "#080e0b",
-                    color:
-                      "#7f9489",
-                    fontSize:
-                      "10px",
-                    cursor:
-                      "pointer",
-                  }}
-                >
-
-                  <Upload
-                    size={18}
-                  />
-
-                  <span>
-                    {repoFile
-                      ? repoFile.name
-                      : "Upload repository ZIP"}
-                  </span>
-
-                  <input
-                    type="file"
-                    accept=".zip"
-                    hidden
-                    onChange={(e) =>
-                      setRepoFile(
-                        e.target
-                          .files?.[0] ||
-                          null
-                      )
-                    }
-                  />
-
-                </label>
-
                 <button
-                  className="secondary-btn"
-                  onClick={
-                    importUploadedRepository
-                  }
-                  disabled={
-                    importing ||
-                    !repoFile
-                  }
+                  type="button"
+                  onClick={() => setImportMode("github")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    padding: "9px 12px",
+                    borderRadius: "7px",
+                    fontSize: "11px",
+                    fontFamily: "DM Mono, monospace",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: importMode === "github" ? "1px solid #00ff88" : "1px solid transparent",
+                    background: importMode === "github" ? "rgba(0, 255, 136, 0.12)" : "transparent",
+                    color: importMode === "github" ? "#00ff88" : "#6f887b",
+                    transition: "all 0.18s ease",
+                  }}
                 >
-                  {importing ? (
-                    <>
-                      <RefreshCw
-                        size={15}
-                        className="spin"
-                      />
-
-                      IMPORTING...
-                    </>
-                  ) : (
-                    <>
-                      <Upload
-                        size={15}
-                      />
-
-                      IMPORT ZIP
-                    </>
-                  )}
+                  <GitBranch size={15} />
+                  <span>GitHub Direct Link / ZIP URL</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => setImportMode("zip")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    padding: "9px 12px",
+                    borderRadius: "7px",
+                    fontSize: "11px",
+                    fontFamily: "DM Mono, monospace",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: importMode === "zip" ? "1px solid #00ff88" : "1px solid transparent",
+                    background: importMode === "zip" ? "rgba(0, 255, 136, 0.12)" : "transparent",
+                    color: importMode === "zip" ? "#00ff88" : "#6f887b",
+                    transition: "all 0.18s ease",
+                  }}
+                >
+                  <Upload size={15} />
+                  <span>Manual ZIP Upload</span>
+                </button>
               </div>
 
-              {/* LOADED REPOSITORY */}
+              {/* TAB 1: GITHUB */}
+              {importMode === "github" && (
+                <div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "#8aa294",
+                      marginBottom: "10px",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    Enter a public GitHub repository URL or direct ZIP archive link. SecurePatch fetches the repository into a secure sandbox, detects vulnerabilities live, and prepares automated AST fixes.
+                  </div>
+
+                  <div
+                    className="github-row"
+                    style={{
+                      display: "flex",
+                      gap: "9px",
+                    }}
+                  >
+                    <div
+                      className="repo-input"
+                      style={{
+                        flex: 1,
+                      }}
+                    >
+                      <GitBranch size={17} />
+                      <input
+                        value={githubUrl}
+                        onChange={(e) => setGithubUrl(e.target.value)}
+                        placeholder="https://github.com/owner/repository (or .git / .zip release archive URL)"
+                      />
+                    </div>
+
+                    <button
+                      className="primary-btn"
+                      onClick={() => liveAuditGitHubRepository ? liveAuditGitHubRepository() : importGitHubRepository()}
+                      disabled={importing || scanning || !githubUrl.trim()}
+                      style={{
+                        whiteSpace: "nowrap",
+                        padding: "0 18px",
+                      }}
+                    >
+                      {importing || scanning ? (
+                        <>
+                          <RefreshCw size={15} className="spin" />
+                          <span>AUDITING LIVE...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={15} />
+                          <span>LIVE AUDIT GITHUB</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      className="secondary-btn"
+                      onClick={() => importGitHubRepository(githubUrl)}
+                      disabled={importing || scanning || !githubUrl.trim()}
+                      style={{
+                        whiteSpace: "nowrap",
+                        padding: "0 14px",
+                      }}
+                      title="Import and stage repository files in workspace"
+                    >
+                      <Download size={15} />
+                      <span>IMPORT ONLY</span>
+                    </button>
+                  </div>
+
+                  {/* QUICK PRESETS */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      marginTop: "10px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "9px",
+                        fontFamily: "DM Mono, monospace",
+                        color: "#52655b",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Quick Presets:
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => setGithubUrl("https://github.com/Tushar-1208-cyber/SecurePatch.git")}
+                      style={{
+                        background: "#08130c",
+                        border: "1px solid #1a3626",
+                        color: "#7ee4a2",
+                        padding: "3px 8px",
+                        borderRadius: "5px",
+                        fontSize: "10px",
+                        fontFamily: "DM Mono, monospace",
+                        cursor: "pointer",
+                      }}
+                    >
+                      ⚡ Tushar-1208-cyber/SecurePatch
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGithubUrl("https://github.com/Tushar-1208-cyber/SecurePatch/archive/refs/heads/main.zip")}
+                      style={{
+                        background: "#08130c",
+                        border: "1px solid #1a3626",
+                        color: "#83a992",
+                        padding: "3px 8px",
+                        borderRadius: "5px",
+                        fontSize: "10px",
+                        fontFamily: "DM Mono, monospace",
+                        cursor: "pointer",
+                      }}
+                    >
+                      📦 Direct Main ZIP Archive
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: MANUAL ZIP */}
+              {importMode === "zip" && (
+                <div>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "#8aa294",
+                      marginBottom: "10px",
+                      lineHeight: "1.4",
+                    }}
+                  >
+                    Upload a local repository .zip archive from your computer.
+                  </div>
+
+                  <div
+                    className="upload-row"
+                    style={{
+                      display: "flex",
+                      gap: "9px",
+                    }}
+                  >
+                    <label
+                      className="upload-box"
+                      style={{
+                        flex: 1,
+                        minHeight: "43px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "9px",
+                        padding: "0 12px",
+                        border: "1px dashed #31513f",
+                        borderRadius: "9px",
+                        background: "#080e0b",
+                        color: "#7f9489",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Upload size={18} />
+                      <span style={{ color: repoFile ? "#00ff88" : "#7f9489" }}>
+                        {repoFile ? repoFile.name : "Select or drag & drop repository .ZIP"}
+                      </span>
+                      <input
+                        type="file"
+                        accept=".zip"
+                        hidden
+                        onChange={(e) => setRepoFile(e.target.files?.[0] || null)}
+                      />
+                    </label>
+
+                    <button
+                      className="primary-btn"
+                      onClick={liveAuditUploadedRepository}
+                      disabled={importing || scanning || !repoFile}
+                      style={{
+                        whiteSpace: "nowrap",
+                        padding: "0 18px",
+                      }}
+                    >
+                      {importing || scanning ? (
+                        <>
+                          <RefreshCw size={15} className="spin" />
+                          <span>AUDITING LIVE...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={15} />
+                          <span>LIVE AUDIT ZIP</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      className="secondary-btn"
+                      onClick={importUploadedRepository}
+                      disabled={importing || scanning || !repoFile}
+                      style={{
+                        whiteSpace: "nowrap",
+                        padding: "0 14px",
+                      }}
+                    >
+                      <Upload size={15} />
+                      <span>IMPORT ZIP</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* LOADED REPOSITORY STATUS */}
               {repositoryName && (
                 <div
                   className="repository-loaded"
                   style={{
-                    display:
-                      "flex",
-                    alignItems:
-                      "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
                     gap: "10px",
-                    marginTop:
-                      "12px",
-                    padding:
-                      "10px 12px",
-                    border:
-                      "1px solid #245338",
-                    borderRadius:
-                      "8px",
-                    background:
-                      "#0a1810",
-                    color:
-                      "#7ee4a2",
+                    marginTop: "14px",
+                    padding: "10px 14px",
+                    border: "1px solid #245338",
+                    borderRadius: "8px",
+                    background: "#0a1810",
+                    color: "#7ee4a2",
                   }}
                 >
-
-                  <CheckCircle2
-                    size={17}
-                  />
-
-                  <div>
-                    <strong
-                      style={{
-                        display:
-                          "block",
-                        fontSize:
-                          "11px",
-                      }}
-                    >
-                      {repositoryName}
-                    </strong>
-
-                    <span
-                      style={{
-                        display:
-                          "block",
-                        marginTop:
-                          "3px",
-                        color:
-                          "#61786a",
-                        fontSize:
-                          "8px",
-                        fontFamily:
-                          "DM Mono, monospace",
-                      }}
-                    >
-                      {repositorySource}
-                      {" "}
-                      repository
-                      {" "}
-                      loaded
-                    </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <CheckCircle2 size={18} />
+                    <div>
+                      <strong style={{ display: "block", fontSize: "11px" }}>
+                        {repositoryName}
+                      </strong>
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: "2px",
+                          color: "#61786a",
+                          fontSize: "9px",
+                          fontFamily: "DM Mono, monospace",
+                        }}
+                      >
+                        Source: {repositorySource} • Ready for AST Inspection & Patching
+                      </span>
+                    </div>
                   </div>
 
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      type="button"
+                      onClick={() => scanRepository()}
+                      disabled={scanning || importing}
+                      style={{
+                        background: "rgba(0, 255, 136, 0.15)",
+                        border: "1px solid #00ff88",
+                        color: "#00ff88",
+                        padding: "4px 10px",
+                        borderRadius: "5px",
+                        cursor: "pointer",
+                        fontSize: "10px",
+                        fontWeight: 600,
+                      }}
+                    >
+                      ⚡ Re-Scan Repo
+                    </button>
+                    {resetRepository && (
+                      <button
+                        type="button"
+                        onClick={resetRepository}
+                        style={{
+                          background: "transparent",
+                          border: "1px solid #2d4538",
+                          color: "#7a9586",
+                          padding: "4px 8px",
+                          borderRadius: "5px",
+                          cursor: "pointer",
+                          fontSize: "10px",
+                        }}
+                      >
+                        Switch Repo
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* RUN SCAN */}
-              <button
-                className="primary-btn scan-button"
-                onClick={
-                  scanRepository
-                }
-                disabled={
-                  !repoPath ||
-                  importing ||
-                  scanning
-                }
-                style={{
-                  width: "100%",
-                  marginTop:
-                    "12px",
-                }}
-              >
-
-                {scanning ? (
-                  <>
-                    <RefreshCw
-                      size={17}
-                      className="spin"
-                    />
-
-                    SCANNING...
-                  </>
-                ) : (
-                  <>
-                    <Play
-                      size={17}
-                      fill="currentColor"
-                    />
-
-                    RUN SECURITY SCAN
-                  </>
-                )}
-
-              </button>
+              {/* RUN SCAN MAIN BUTTON (WHEN REPO LOADED) */}
+              {repoPath && (
+                <button
+                  className="primary-btn scan-button"
+                  onClick={scanRepository}
+                  disabled={!repoPath || importing || scanning}
+                  style={{
+                    width: "100%",
+                    marginTop: "12px",
+                  }}
+                >
+                  {scanning ? (
+                    <>
+                      <RefreshCw size={17} className="spin" />
+                      <span>LIVE SCANNING ACTIVE...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play size={17} fill="currentColor" />
+                      <span>START FULL SECURITY SCAN</span>
+                    </>
+                  )}
+                </button>
+              )}
 
             </div>
 
