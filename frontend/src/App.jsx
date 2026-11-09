@@ -1701,7 +1701,7 @@ function Overview({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "14px",
+                  marginBottom: "16px",
                 }}
               >
                 <div
@@ -1710,9 +1710,9 @@ function Overview({
                     alignItems: "center",
                     gap: "8px",
                     color: "#9ee9b8",
-                    fontSize: "10px",
+                    fontSize: "11px",
                     fontFamily: "DM Mono, monospace",
-                    letterSpacing: "0.12em",
+                    letterSpacing: "0.1em",
                     textTransform: "uppercase",
                   }}
                 >
@@ -1720,15 +1720,34 @@ function Overview({
                   <span>Repository Ingestion</span>
                 </div>
 
-                <div
+                <button
+                  type="button"
+                  onClick={() =>
+                    window.open(
+                      "https://github.com/search?q=language%3Apython&type=repositories",
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "transparent",
+                    border: "1px solid #234633",
+                    color: "#00ff88",
+                    padding: "5px 11px",
+                    borderRadius: "6px",
                     fontSize: "10px",
-                    color: "#52655b",
                     fontFamily: "DM Mono, monospace",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
+                  title="Search repositories on GitHub in a new tab"
                 >
-                  LIVE SAST + AST PIPELINE
-                </div>
+                  <ExternalLink size={12} />
+                  <span>Open GitHub Search ↗</span>
+                </button>
               </div>
 
               {/* METHOD TABS */}
@@ -1736,12 +1755,12 @@ function Overview({
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 1fr",
-                  gap: "8px",
+                  gap: "10px",
                   background: "#030805",
-                  padding: "4px",
+                  padding: "5px",
                   borderRadius: "10px",
                   border: "1px solid #14241b",
-                  marginBottom: "16px",
+                  marginBottom: "18px",
                 }}
               >
                 <button
@@ -1752,8 +1771,8 @@ function Overview({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
-                    padding: "9px 12px",
-                    borderRadius: "7px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
                     fontSize: "11px",
                     fontFamily: "DM Mono, monospace",
                     fontWeight: 600,
@@ -1765,7 +1784,7 @@ function Overview({
                   }}
                 >
                   <GitBranch size={15} />
-                  <span>GitHub Direct Link / ZIP URL</span>
+                  <span>GitHub Direct Link</span>
                 </button>
 
                 <button
@@ -1776,8 +1795,8 @@ function Overview({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
-                    padding: "9px 12px",
-                    borderRadius: "7px",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
                     fontSize: "11px",
                     fontFamily: "DM Mono, monospace",
                     fontWeight: 600,
@@ -1796,210 +1815,54 @@ function Overview({
               {/* TAB 1: GITHUB */}
               {importMode === "github" && (
                 <div>
-                  {/* DIRECT GITHUB OPEN & SEARCH BAR */}
                   <div
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "10px",
-                      background: "rgba(0, 255, 136, 0.05)",
-                      border: "1px solid #1a3c29",
-                      borderRadius: "10px",
-                      padding: "10px 14px",
+                      fontSize: "11px",
+                      color: "#7e978a",
                       marginBottom: "14px",
-                      flexWrap: "wrap",
+                      lineHeight: "1.5",
                     }}
                   >
-                    <div>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          color: "#00ff88",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          fontFamily: "DM Mono, monospace",
-                        }}
-                      >
-                        <Globe size={15} />
-                        <span>FIND REPOSITORIES DIRECTLY ON GITHUB</span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "10px",
-                          color: "#7e9789",
-                          marginTop: "2px",
-                        }}
-                      >
-                        Click below to open GitHub, search any project, copy its link and paste here to audit:
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(
-                            "https://github.com/search?q=language%3Apython&type=repositories",
-                            "_blank",
-                            "noopener,noreferrer"
-                          )
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          background: "#081b12",
-                          border: "1px solid #00ff88",
-                          color: "#00ff88",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          fontSize: "11px",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          transition: "all 0.15s ease",
-                        }}
-                      >
-                        <ExternalLink size={13} />
-                        <span>Open GitHub Search ↗</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(
-                            "https://github.com/search?q=vulnerable+python+app&type=repositories",
-                            "_blank",
-                            "noopener,noreferrer"
-                          )
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          background: "#07130c",
-                          border: "1px solid #254633",
-                          color: "#8cd5a8",
-                          padding: "6px 10px",
-                          borderRadius: "6px",
-                          fontSize: "11px",
-                          cursor: "pointer",
-                        }}
-                        title="Search vulnerable test benchmark repositories on GitHub"
-                      >
-                        <Search size={13} />
-                        <span>Vulnerable Apps ↗</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(
-                            "https://github.com/Tushar-1208-cyber?tab=repositories",
-                            "_blank",
-                            "noopener,noreferrer"
-                          )
-                        }
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                          background: "#07130c",
-                          border: "1px solid #254633",
-                          color: "#8cd5a8",
-                          padding: "6px 10px",
-                          borderRadius: "6px",
-                          fontSize: "11px",
-                          cursor: "pointer",
-                        }}
-                        title="View your own GitHub profile and repositories"
-                      >
-                        <span>My Profile (Tushar) ↗</span>
-                      </button>
-                    </div>
+                    Enter or paste a public GitHub repository URL below to audit for vulnerabilities in a secure sandbox:
                   </div>
 
                   <div
                     className="github-row"
                     style={{
                       display: "flex",
-                      gap: "9px",
+                      alignItems: "center",
+                      gap: "12px",
                     }}
                   >
                     <div
                       className="repo-input"
                       style={{
                         flex: 1,
+                        height: "44px",
+                        padding: "0 14px",
                         display: "flex",
                         alignItems: "center",
-                        position: "relative",
+                        gap: "10px",
+                        background: "#060e0a",
+                        border: "1px solid #203a2c",
+                        borderRadius: "9px",
                       }}
                     >
-                      <GitBranch size={17} style={{ marginLeft: "10px", color: "#617d6e", flexShrink: 0 }} />
+                      <GitBranch size={17} style={{ color: "#617d6e", flexShrink: 0 }} />
                       <input
                         value={githubUrl}
                         onChange={(e) => setGithubUrl(e.target.value)}
-                        placeholder="Paste any GitHub repository URL here (e.g. https://github.com/owner/repo)"
+                        placeholder="https://github.com/owner/repository"
                         style={{
                           flex: 1,
-                          paddingRight: githubUrl ? "75px" : "40px",
+                          fontSize: "12px",
+                          fontFamily: "DM Mono, monospace",
+                          background: "transparent",
+                          border: "none",
+                          outline: "none",
+                          color: "#c9d9d0",
                         }}
                       />
-
-                      {/* CLEAR BUTTON */}
-                      {githubUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setGithubUrl("")}
-                          style={{
-                            position: "absolute",
-                            right: "78px",
-                            background: "transparent",
-                            border: "none",
-                            color: "#6b8376",
-                            fontSize: "13px",
-                            cursor: "pointer",
-                            padding: "2px 6px",
-                          }}
-                          title="Clear input"
-                        >
-                          ✕
-                        </button>
-                      )}
-
-                      {/* PASTE BUTTON */}
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            if (navigator?.clipboard?.readText) {
-                              const text = await navigator.clipboard.readText();
-                              if (text && text.trim()) {
-                                setGithubUrl(text.trim());
-                              }
-                            }
-                          } catch (err) {
-                            console.warn("Clipboard access denied", err);
-                          }
-                        }}
-                        style={{
-                          position: "absolute",
-                          right: "6px",
-                          background: "#0e2017",
-                          border: "1px solid #234733",
-                          color: "#84e3a9",
-                          borderRadius: "5px",
-                          padding: "4px 8px",
-                          fontSize: "10px",
-                          cursor: "pointer",
-                          fontFamily: "DM Mono, monospace",
-                        }}
-                        title="Paste URL copied from GitHub"
-                      >
-                        📋 Paste
-                      </button>
                     </div>
 
                     <button
@@ -2007,8 +1870,9 @@ function Overview({
                       onClick={() => liveAuditGitHubRepository ? liveAuditGitHubRepository() : importGitHubRepository()}
                       disabled={importing || scanning || !githubUrl.trim()}
                       style={{
+                        height: "44px",
+                        padding: "0 22px",
                         whiteSpace: "nowrap",
-                        padding: "0 18px",
                       }}
                     >
                       {importing || scanning ? (
@@ -2023,30 +1887,15 @@ function Overview({
                         </>
                       )}
                     </button>
-
-                    <button
-                      className="secondary-btn"
-                      onClick={() => importGitHubRepository(githubUrl)}
-                      disabled={importing || scanning || !githubUrl.trim()}
-                      style={{
-                        whiteSpace: "nowrap",
-                        padding: "0 14px",
-                      }}
-                      title="Import and stage repository files in workspace"
-                    >
-                      <Download size={15} />
-                      <span>IMPORT ONLY</span>
-                    </button>
                   </div>
 
-                  {/* QUICK PRESETS */}
+                  {/* QUICK PRESET */}
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "8px",
-                      marginTop: "10px",
-                      flexWrap: "wrap",
+                      gap: "10px",
+                      marginTop: "14px",
                     }}
                   >
                     <span
@@ -2057,7 +1906,7 @@ function Overview({
                         textTransform: "uppercase",
                       }}
                     >
-                      Quick Presets:
+                      Quick Preset:
                     </span>
 
                     <button
@@ -2067,31 +1916,15 @@ function Overview({
                         background: "#08130c",
                         border: "1px solid #1a3626",
                         color: "#7ee4a2",
-                        padding: "3px 8px",
-                        borderRadius: "5px",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
                         fontSize: "10px",
                         fontFamily: "DM Mono, monospace",
                         cursor: "pointer",
+                        transition: "all 0.15s ease",
                       }}
                     >
                       ⚡ Tushar-1208-cyber/SecurePatch
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setGithubUrl("https://github.com/Tushar-1208-cyber/SecurePatch/archive/refs/heads/main.zip")}
-                      style={{
-                        background: "#08130c",
-                        border: "1px solid #1a3626",
-                        color: "#83a992",
-                        padding: "3px 8px",
-                        borderRadius: "5px",
-                        fontSize: "10px",
-                        fontFamily: "DM Mono, monospace",
-                        cursor: "pointer",
-                      }}
-                    >
-                      📦 Direct Main ZIP Archive
                     </button>
                   </div>
                 </div>
@@ -2103,30 +1936,31 @@ function Overview({
                   <div
                     style={{
                       fontSize: "11px",
-                      color: "#8aa294",
-                      marginBottom: "10px",
-                      lineHeight: "1.4",
+                      color: "#7e978a",
+                      marginBottom: "14px",
+                      lineHeight: "1.5",
                     }}
                   >
-                    Upload a local repository .zip archive from your computer.
+                    Upload a local repository .zip archive from your computer to run static security checks.
                   </div>
 
                   <div
                     className="upload-row"
                     style={{
                       display: "flex",
-                      gap: "9px",
+                      alignItems: "center",
+                      gap: "12px",
                     }}
                   >
                     <label
                       className="upload-box"
                       style={{
                         flex: 1,
-                        minHeight: "43px",
+                        height: "44px",
                         display: "flex",
                         alignItems: "center",
-                        gap: "9px",
-                        padding: "0 12px",
+                        gap: "10px",
+                        padding: "0 14px",
                         border: "1px dashed #31513f",
                         borderRadius: "9px",
                         background: "#080e0b",
@@ -2135,7 +1969,7 @@ function Overview({
                         cursor: "pointer",
                       }}
                     >
-                      <Upload size={18} />
+                      <Upload size={17} />
                       <span style={{ color: repoFile ? "#00ff88" : "#7f9489" }}>
                         {repoFile ? repoFile.name : "Select or drag & drop repository .ZIP"}
                       </span>
@@ -2152,8 +1986,9 @@ function Overview({
                       onClick={liveAuditUploadedRepository}
                       disabled={importing || scanning || !repoFile}
                       style={{
+                        height: "44px",
+                        padding: "0 22px",
                         whiteSpace: "nowrap",
-                        padding: "0 18px",
                       }}
                     >
                       {importing || scanning ? (
@@ -2168,19 +2003,6 @@ function Overview({
                         </>
                       )}
                     </button>
-
-                    <button
-                      className="secondary-btn"
-                      onClick={importUploadedRepository}
-                      disabled={importing || scanning || !repoFile}
-                      style={{
-                        whiteSpace: "nowrap",
-                        padding: "0 14px",
-                      }}
-                    >
-                      <Upload size={15} />
-                      <span>IMPORT ZIP</span>
-                    </button>
                   </div>
                 </div>
               )}
@@ -2193,19 +2015,19 @@ function Overview({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    gap: "10px",
-                    marginTop: "14px",
-                    padding: "10px 14px",
+                    gap: "12px",
+                    marginTop: "16px",
+                    padding: "12px 16px",
                     border: "1px solid #245338",
-                    borderRadius: "8px",
+                    borderRadius: "9px",
                     background: "#0a1810",
                     color: "#7ee4a2",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <CheckCircle2 size={18} />
+                    <CheckCircle2 size={18} color="#00ff88" />
                     <div>
-                      <strong style={{ display: "block", fontSize: "11px" }}>
+                      <strong style={{ display: "block", fontSize: "12px", color: "#d6f5e3" }}>
                         {repositoryName}
                       </strong>
                       <span
@@ -2222,67 +2044,42 @@ function Overview({
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px" }}>
+                  {resetRepository && (
                     <button
                       type="button"
-                      onClick={() => scanRepository()}
-                      disabled={scanning || importing}
+                      onClick={resetRepository}
                       style={{
-                        background: "rgba(0, 255, 136, 0.15)",
-                        border: "1px solid #00ff88",
-                        color: "#00ff88",
-                        padding: "4px 10px",
-                        borderRadius: "5px",
+                        background: "transparent",
+                        border: "1px solid #2d4538",
+                        color: "#8ca898",
+                        padding: "5px 12px",
+                        borderRadius: "6px",
                         cursor: "pointer",
-                        fontSize: "10px",
-                        fontWeight: 600,
+                        fontSize: "11px",
+                        fontFamily: "DM Mono, monospace",
+                        transition: "all 0.15s ease",
                       }}
                     >
-                      ⚡ Re-Scan Repo
+                      Switch Repo
                     </button>
-                    {resetRepository && (
-                      <button
-                        type="button"
-                        onClick={resetRepository}
-                        style={{
-                          background: "transparent",
-                          border: "1px solid #2d4538",
-                          color: "#7a9586",
-                          padding: "4px 8px",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                          fontSize: "10px",
-                        }}
-                      >
-                        Switch Repo
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               )}
 
-              {/* RUN SCAN MAIN BUTTON (WHEN REPO LOADED) */}
-              {repoPath && (
+              {/* RUN SCAN MAIN BUTTON (WHEN REPO LOADED & NOT SCANNING) */}
+              {repoPath && !scanning && (
                 <button
                   className="primary-btn scan-button"
                   onClick={scanRepository}
                   disabled={!repoPath || importing || scanning}
                   style={{
                     width: "100%",
-                    marginTop: "12px",
+                    marginTop: "14px",
+                    height: "44px",
                   }}
                 >
-                  {scanning ? (
-                    <>
-                      <RefreshCw size={17} className="spin" />
-                      <span>LIVE SCANNING ACTIVE...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={17} fill="currentColor" />
-                      <span>START FULL SECURITY SCAN</span>
-                    </>
-                  )}
+                  <Play size={16} fill="currentColor" />
+                  <span>START FULL SECURITY SCAN</span>
                 </button>
               )}
 
