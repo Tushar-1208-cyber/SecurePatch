@@ -13,6 +13,10 @@ import {
   ExternalLink,
   FileCode2,
   GitBranch,
+  GitPullRequest,
+  Copy,
+  Check,
+  X,
   Globe,
   Layers3,
   Link2,
@@ -1330,6 +1334,10 @@ async function generatePatch(model = "qwen2.5-coder") {
               downloadFixedRepository={downloadFixedRepository}
               stage={stage}
               onStage={openStage}
+              repoPath={repoPath}
+              selectedFinding={selectedFinding}
+              patchData={patchData}
+              githubUrl={githubUrl}
             />
         )}
 
@@ -5231,7 +5239,13 @@ function ValidationView({
   downloadFixedRepository,
   stage,
   onStage,
+  repoPath,
+  selectedFinding,
+  patchData,
+  githubUrl,
 }) {
+  const [showPRModal, setShowPRModal] = useState(false);
+
   const regression =
     validation?.regression;
 
@@ -5742,27 +5756,69 @@ function ValidationView({
             }}
           >
             The patch passed regression testing and
-            security re-scan. Download the verified
-            repository as a ZIP archive.
+            security re-scan. You can download the verified
+            repository as a ZIP archive or launch an automated GitHub Pull Request directly.
           </p>
 
-          <button
-            className="primary-btn wide"
-            onClick={downloadFixedRepository}
-            disabled={downloading}
+          <div
+            style={{
+              display: "flex",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
           >
-            {downloading ? (
-              <>
-                <RefreshCw size={16} className="spin" />
-                PREPARING DOWNLOAD...
-              </>
-            ) : (
-              <>
-                <Download size={16} />
-                DOWNLOAD VERIFIED REPOSITORY
-              </>
-            )}
-          </button>
+            <button
+              className="primary-btn"
+              onClick={downloadFixedRepository}
+              disabled={downloading}
+              style={{
+                flex: 1,
+                minWidth: "200px",
+                height: "42px",
+              }}
+            >
+              {downloading ? (
+                <>
+                  <RefreshCw size={16} className="spin" />
+                  PREPARING DOWNLOAD...
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  DOWNLOAD ZIP ARCHIVE
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => setShowPRModal(true)}
+              style={{
+                flex: 1,
+                minWidth: "230px",
+                height: "42px",
+                background: "linear-gradient(135deg, #0e301d 0%, #16462a 100%)",
+                border: "1px solid #00ff88",
+                color: "#00ff88",
+                fontWeight: 700,
+              }}
+            >
+              <GitPullRequest size={16} />
+              <span>🚀 1-CLICK GITHUB PULL REQUEST</span>
+            </button>
+          </div>
+
+          {showPRModal && (
+            <GitHubPRModal
+              isOpen={showPRModal}
+              onClose={() => setShowPRModal(false)}
+              repoPath={repoPath}
+              selectedFinding={selectedFinding}
+              patchData={patchData}
+              githubUrl={githubUrl}
+            />
+          )}
         </div>
       )}
 
@@ -5909,6 +5965,534 @@ function ValidationCard({
 
       </div>
 
+    </div>
+  );
+}
+
+/* =========================================================
+   1-CLICK AUTOMATED GITHUB PULL REQUEST BOT MODAL
+========================================================= */
+
+function GitHubPRModal({
+  isOpen,
+  onClose,
+  repoPath,
+  selectedFinding,
+  patchData,
+  githubUrl,
+}) {
+  if (!isOpen) return null;
+
+  const patchText =
+    patchData?.patch?.patch ||
+    patchData?.patch?.function ||
+    (typeof patchData?.patch === "string" ? patchData?.patch : "") ||
+    "";
+
+  const ruleId = selectedFinding?.test_id || "SECURITY_FIX";
+  const filePath = selectedFinding?.filename || "app.py";
+  const lineNo = selectedFinding?.line_number || 1;
+  const description = selectedFinding?.issue_text || "Automated security remediation";
+
+  const defaultBranchName = useMemo(() => {
+    const clean = ruleId.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/^-+|-+$/g, "") || "patch";
+    const ts = Math.floor(Date.now() / 1000) % 10000;
+    return `fix/security-${clean}-${ts}`;
+  }, [ruleId]);
+
+  const [targetRepo, setTargetRepo] = useState(
+    githubUrl || "https://github.com/Tushar-1208-cyber/SecurePatch.git"
+  );
+  const [branchName, setBranchName] = useState(defaultBranchName);
+  const [baseBranch, setBaseBranch] = useState("main");
+  const [githubToken, setGithubToken] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function handleCreatePR(withToken = false) {
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const response = await fetch(`${API}/api/github/create-pr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repo_path: repoPath || "sample_repo",
+          file_path: filePath,
+          patch: patchText,
+          rule_id: ruleId,
+          description: description,
+          line: lineNo,
+          repo_url: targetRepo,
+          target_branch: baseBranch,
+          branch_name: branchName,
+          github_token: withToken ? githubToken.trim() : null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to initialize Pull Request.");
+      }
+
+      const data = await response.json();
+      setResult(data);
+
+      if (!withToken && data.compare_url) {
+        window.open(data.compare_url, "_blank");
+      }
+    } catch (err) {
+      setError(err.message || "An unexpected error occurred while creating Pull Request.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function copyCliCommands() {
+    const cmds = [
+      `git checkout -b ${branchName}`,
+      `git add ${filePath}`,
+      `git commit -m "fix(security): remediate ${ruleId} in ${filePath}"`,
+      `git push origin ${branchName}`,
+    ].join("\n");
+
+    navigator.clipboard.writeText(cmds);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(3, 10, 6, 0.88)",
+        backdropFilter: "blur(6px)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "680px",
+          background: "#07140c",
+          border: "1px solid #1f422e",
+          borderRadius: "14px",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(0, 255, 136, 0.1)",
+          overflow: "hidden",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "18px 24px",
+            borderBottom: "1px solid #163322",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "#0a1b11",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "8px",
+                background: "rgba(0, 255, 136, 0.12)",
+                color: "#00ff88",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <GitPullRequest size={18} />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#00ff88",
+                  fontFamily: "DM Mono, monospace",
+                  fontWeight: 700,
+                  letterSpacing: "1px",
+                }}
+              >
+                AUTO-PR BOT · ENTERPRISE REMEDIATION
+              </div>
+              <h3
+                style={{
+                  margin: "2px 0 0",
+                  fontSize: "17px",
+                  fontWeight: 700,
+                  color: "#eaf5ee",
+                }}
+              >
+                1-Click GitHub Pull Request
+              </h3>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#7e978a",
+              cursor: "pointer",
+              padding: "6px",
+              borderRadius: "6px",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body Content */}
+        <div
+          style={{
+            padding: "22px 24px",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          {/* Target Repo & Branches */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <label
+                style={{
+                  fontSize: "10px",
+                  color: "#6b8676",
+                  fontFamily: "DM Mono, monospace",
+                  display: "block",
+                  marginBottom: "5px",
+                }}
+              >
+                TARGET GITHUB REPOSITORY
+              </label>
+              <input
+                value={targetRepo}
+                onChange={(e) => setTargetRepo(e.target.value)}
+                placeholder="https://github.com/owner/repository"
+                style={{
+                  width: "100%",
+                  height: "38px",
+                  padding: "0 12px",
+                  background: "#050d08",
+                  border: "1px solid #1a3826",
+                  borderRadius: "8px",
+                  color: "#c9ded3",
+                  fontSize: "11px",
+                  fontFamily: "DM Mono, monospace",
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  fontSize: "10px",
+                  color: "#6b8676",
+                  fontFamily: "DM Mono, monospace",
+                  display: "block",
+                  marginBottom: "5px",
+                }}
+              >
+                NEW REMEDIATION BRANCH
+              </label>
+              <input
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                style={{
+                  width: "100%",
+                  height: "38px",
+                  padding: "0 12px",
+                  background: "#050d08",
+                  border: "1px solid #1a3826",
+                  borderRadius: "8px",
+                  color: "#00ff88",
+                  fontSize: "11px",
+                  fontFamily: "DM Mono, monospace",
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Verification Badge Overview */}
+          <div
+            style={{
+              padding: "14px 16px",
+              background: "#050d08",
+              border: "1px solid #163322",
+              borderRadius: "10px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  color: "#e6f3ec",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <ShieldCheck size={15} style={{ color: "#00ff88" }} />
+                <span>Verified Patch for {ruleId} ({filePath}:{lineNo})</span>
+              </div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#7e978a",
+                  marginTop: "3px",
+                  fontFamily: "DM Mono, monospace",
+                }}
+              >
+                Bandit Scan: 0 issues remaining · PyTest: 0 regressions
+              </div>
+            </div>
+
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#00ff88",
+                background: "rgba(0, 255, 136, 0.1)",
+                border: "1px solid #00ff8844",
+                padding: "4px 8px",
+                borderRadius: "6px",
+                fontFamily: "DM Mono, monospace",
+              }}
+            >
+              READY TO MERGE
+            </span>
+          </div>
+
+          {/* Automated PR Description Preview */}
+          <div>
+            <label
+              style={{
+                fontSize: "10px",
+                color: "#6b8676",
+                fontFamily: "DM Mono, monospace",
+                display: "block",
+                marginBottom: "5px",
+              }}
+            >
+              PULL REQUEST TITLE & COMMIT
+            </label>
+            <div
+              style={{
+                padding: "10px 12px",
+                background: "#050d08",
+                border: "1px solid #163322",
+                borderRadius: "8px",
+                fontSize: "11px",
+                fontFamily: "DM Mono, monospace",
+                color: "#9fe4ba",
+              }}
+            >
+              fix(security): remediate {ruleId} in {filePath} (SecurePatch Bot)
+            </div>
+          </div>
+
+          {/* GitHub API Token (Optional) */}
+          <div
+            style={{
+              padding: "12px 14px",
+              background: "#08160f",
+              border: "1px solid #173624",
+              borderRadius: "9px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "6px",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontFamily: "DM Mono, monospace",
+                  color: "#829f8f",
+                  fontWeight: 600,
+                }}
+              >
+                AUTOMATED API PUSH (OPTIONAL)
+              </span>
+              <span style={{ fontSize: "9px", color: "#50695c" }}>
+                Needs GitHub PAT with repo scope
+              </span>
+            </div>
+            <input
+              type="password"
+              placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (GitHub Personal Access Token)"
+              value={githubToken}
+              onChange={(e) => setGithubToken(e.target.value)}
+              style={{
+                width: "100%",
+                height: "34px",
+                padding: "0 10px",
+                background: "#040b07",
+                border: "1px solid #1a3826",
+                borderRadius: "6px",
+                color: "#c9ded3",
+                fontSize: "11px",
+                fontFamily: "DM Mono, monospace",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Error / Result Display */}
+          {error && (
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "rgba(255, 68, 85, 0.1)",
+                border: "1px solid #ff445555",
+                borderRadius: "8px",
+                color: "#ff6677",
+                fontSize: "11px",
+                lineHeight: "1.5",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {result && (
+            <div
+              style={{
+                padding: "12px 14px",
+                background: "rgba(0, 255, 136, 0.08)",
+                border: "1px solid #00ff8844",
+                borderRadius: "8px",
+                fontSize: "11px",
+                lineHeight: "1.5",
+              }}
+            >
+              <div style={{ color: "#00ff88", fontWeight: 700, marginBottom: "4px" }}>
+                ✓ {result.api_created ? "Pull Request Created via GitHub REST API!" : "Branch & Compare Link Prepared!"}
+              </div>
+              <div style={{ color: "#8ab49b", marginBottom: "8px" }}>
+                Branch: <code>{result.branch_name}</code> → <code>{result.target_branch}</code>
+              </div>
+              <a
+                href={result.pr_url || result.compare_url}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  color: "#00ff88",
+                  fontWeight: 700,
+                  textDecoration: "underline",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <span>View Pull Request on GitHub ↗</span>
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Actions */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #163322",
+            background: "#0a1b11",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "10px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={copyCliCommands}
+            style={{
+              padding: "0 14px",
+              height: "38px",
+              background: "#08150d",
+              border: "1px solid #1d3e2b",
+              borderRadius: "8px",
+              color: "#84a592",
+              fontSize: "11px",
+              fontFamily: "DM Mono, monospace",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            {copied ? <Check size={14} style={{ color: "#00ff88" }} /> : <Copy size={14} />}
+            <span>{copied ? "COPIED CLI!" : "COPY CLI"}</span>
+          </button>
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            {githubToken.trim() ? (
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={() => handleCreatePR(true)}
+                disabled={loading}
+                style={{ height: "38px", padding: "0 18px", fontSize: "11px" }}
+              >
+                {loading ? <RefreshCw size={14} className="spin" /> : <GitPullRequest size={14} />}
+                <span>PUSH & CREATE PR VIA API</span>
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => handleCreatePR(false)}
+              disabled={loading}
+              style={{
+                height: "38px",
+                padding: "0 20px",
+                fontSize: "11px",
+                background: "linear-gradient(135deg, #00ff88 0%, #00bb66 100%)",
+                color: "#031006",
+                fontWeight: 800,
+              }}
+            >
+              {loading ? (
+                <RefreshCw size={14} className="spin" />
+              ) : (
+                <ExternalLink size={14} />
+              )}
+              <span>OPEN GITHUB PULL REQUEST ↗</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
