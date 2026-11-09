@@ -1,5 +1,10 @@
 # SecurePatch
 
+[![CI/CD Pipeline](https://github.com/Tushar-1208-cyber/SecurePatch/actions/workflows/securepatch.yml/badge.svg)](https://github.com/Tushar-1208-cyber/SecurePatch/actions/workflows/securepatch.yml)
+[![Docker](https://img.shields.io/badge/Docker-Multi--Container-blue?logo=docker)](docker-compose.yml)
+[![Vercel](https://img.shields.io/badge/Vercel-Frontend%20Deploy-black?logo=vercel)](frontend/vercel.json)
+[![Render](https://img.shields.io/badge/Render-Backend%20API-46E3B7?logo=render)](render.yaml)
+
 SecurePatch is an AI-assisted security vulnerability detection and automated patch verification system for Python repositories.
 
 ## Research Question
@@ -90,3 +95,32 @@ Codestral achieved an 83.33% verified rate among successfully generated patches,
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+---
+
+## 🚀 Enterprise CI/CD & Deployment Architecture
+
+SecurePatch is integrated with an automated continuous integration and continuous deployment (CI/CD) pipeline supporting both containerized deployment and live cloud infrastructure:
+
+### 1. Docker Multi-Container Architecture (Local & Production)
+Launch the entire SecurePatch stack (FastAPI Backend + React Frontend + Nginx Reverse Proxy) with a single command:
+
+```bash
+docker compose up --build
+```
+
+* **Frontend Dashboard:** `http://localhost:3000`
+* **FastAPI Backend:** `http://localhost:8000`
+* **Interactive API Docs:** `http://localhost:8000/docs`
+
+### 2. GitHub Actions CI/CD Pipeline (`.github/workflows/securepatch.yml`)
+* **Continuous Integration (CI):**
+  * Automated Bandit SAST security scan across Python modules.
+  * Regression test suite verification (`pytest`).
+  * Production frontend bundle compilation validation (`npm run build`).
+* **Continuous Deployment (CD) - Container Delivery:**
+  * Multi-stage Docker images automatically built and published to **GitHub Container Registry (`ghcr.io`)** on every push to `main`.
+* **Continuous Deployment (CD) - Cloud Live Deployment:**
+  * **Frontend (Vercel):** Configured via [`frontend/vercel.json`](frontend/vercel.json) for zero-configuration, global edge delivery.
+  * **Backend (Render):** Configured via [`render.yaml`](render.yaml) for automated container runtime provisioning and autoscaling.
