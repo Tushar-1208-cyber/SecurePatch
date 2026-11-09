@@ -1,0 +1,44 @@
+version: "3.8"
+
+# =========================================================
+# SecurePatch AI Security Platform - Multi-Container Compose
+# Orchestrates FastAPI Security Engine & React Dashboard
+# =========================================================
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: securepatch-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost:80,http://127.0.0.1:5173
+    volumes:
+      - securepatch_workspace:/app/workspace
+    networks:
+      - securepatch-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: securepatch-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - securepatch-net
+
+volumes:
+  securepatch_workspace:
+    driver: local
+
+networks:
+  securepatch-net:
+    driver: bridge
