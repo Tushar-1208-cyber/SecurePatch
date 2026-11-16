@@ -333,10 +333,33 @@ def generate(
             f"Make sure Ollama is running."
         ) from exc
     except requests.RequestException as exc:
-        raise RuntimeError(
-            f"Failed to generate response using Ollama model "
-            f"'{ollama_model}': {exc}"
-        ) from exc
+        # If model failed with 500 (e.g. GPU VRAM overflow or CUDA cold load crash),
+        # gracefully fall back to an installed lighter model like qwen2.5:1.5b or phi3:mini
+        recovered = False
+        fallback_candidates = [m for m in ["qwen2.5:1.5b", "phi3:mini", "codellama:7b-instruct"] if m != ollama_model]
+        for alt_model in fallback_candidates:
+            try:
+                print(f"[llm_adapter] Model '{ollama_model}' failed ({exc}). Retrying with fallback '{alt_model}'...")
+                alt_payload = dict(payload)
+                alt_payload["model"] = alt_model
+                alt_payload["options"] = _model_options("qwen2.5" if "qwen" in alt_model else "phi3")
+                alt_response = requests.post(
+                    f"{OLLAMA_BASE_URL}/api/chat",
+                    json=alt_payload,
+                    timeout=timeout,
+                )
+                if alt_response.ok:
+                    response = alt_response
+                    ollama_model = alt_model
+                    recovered = True
+                    break
+            except Exception:
+                continue
+        if not recovered:
+            raise RuntimeError(
+                f"Failed to generate response using Ollama model "
+                f"'{ollama_model}': {exc}"
+            ) from exc
 
     try:
         data = response.json()
