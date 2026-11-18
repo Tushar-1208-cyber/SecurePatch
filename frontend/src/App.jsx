@@ -13,11 +13,14 @@ import {
   ExternalLink,
   FileCode2,
   GitBranch,
+  GitFork,
   GitPullRequest,
   Copy,
   Check,
   X,
   Globe,
+  HelpCircle,
+  Key,
   Layers3,
   Link2,
   LockKeyhole,
@@ -5397,6 +5400,7 @@ function ValidationView({
   githubUrl,
 }) {
   const [showPRModal, setShowPRModal] = useState(false);
+  const [showForkModal, setShowForkModal] = useState(false);
 
   const regression =
     validation?.regression;
@@ -5945,10 +5949,29 @@ function ValidationView({
             <button
               type="button"
               className="primary-btn"
+              onClick={() => setShowForkModal(true)}
+              style={{
+                flex: 1,
+                minWidth: "220px",
+                height: "42px",
+                background: "linear-gradient(135deg, #00ff88 0%, #00bb66 100%)",
+                border: "none",
+                color: "#031207",
+                fontWeight: 800,
+                boxShadow: "0 4px 14px rgba(0, 255, 136, 0.25)",
+              }}
+            >
+              <GitFork size={16} />
+              <span>🍴 FORK & PUSH TO MY GITHUB</span>
+            </button>
+
+            <button
+              type="button"
+              className="primary-btn"
               onClick={() => setShowPRModal(true)}
               style={{
                 flex: 1,
-                minWidth: "230px",
+                minWidth: "210px",
                 height: "42px",
                 background: "linear-gradient(135deg, #0e301d 0%, #16462a 100%)",
                 border: "1px solid #00ff88",
@@ -5960,6 +5983,17 @@ function ValidationView({
               <span>🚀 1-CLICK GITHUB PULL REQUEST</span>
             </button>
           </div>
+
+          {showForkModal && (
+            <GitHubForkModal
+              isOpen={showForkModal}
+              onClose={() => setShowForkModal(false)}
+              repoPath={repoPath}
+              selectedFinding={selectedFinding}
+              patchData={patchData}
+              githubUrl={githubUrl}
+            />
+          )}
 
           {showPRModal && (
             <GitHubPRModal
@@ -6643,6 +6677,644 @@ function GitHubPRModal({
               <span>OPEN GITHUB PULL REQUEST ↗</span>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   1-CLICK AUTOMATED GITHUB FORK & PUSH MODAL
+========================================================= */
+
+function GitHubForkModal({
+  isOpen,
+  onClose,
+  repoPath,
+  selectedFinding,
+  patchData,
+  githubUrl,
+}) {
+  if (!isOpen) return null;
+
+  const patchText =
+    patchData?.patch?.patch ||
+    patchData?.patch?.function ||
+    (typeof patchData?.patch === "string" ? patchData?.patch : "") ||
+    "";
+
+  const ruleId = selectedFinding?.test_id || "SECURITY_FIX";
+  const filePath = selectedFinding?.filename || "app.py";
+  const shortFileName = filePath ? filePath.split(/[\\/]/).pop() : "code.py";
+
+  const [targetRepo, setTargetRepo] = useState(
+    githubUrl || "https://github.com/we45/Vulnerable-Flask-App.git"
+  );
+  const [githubToken, setGithubToken] = useState(() => {
+    try {
+      return localStorage.getItem("securepatch_github_token") || "";
+    } catch {
+      return "";
+    }
+  });
+  const [showToken, setShowToken] = useState(false);
+  const [commitMessage, setCommitMessage] = useState(
+    `fix(security): remediate ${ruleId} in ${shortFileName} via SecurePatch Bot`
+  );
+  const [loading, setLoading] = useState(false);
+  const [stepStatus, setStepStatus] = useState("");
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+  const [showTokenGuide, setShowTokenGuide] = useState(false);
+
+  // Extract owner and repo for UI preview
+  const parsedRepo = useMemo(() => {
+    const clean = (targetRepo || "").trim();
+    const match = clean.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
+    if (match) {
+      return { owner: match[1], repo: match[2].replace(/\.git$/, "") };
+    }
+    return { owner: "upstream-owner", repo: "repository" };
+  }, [targetRepo]);
+
+  async function handleForkAndPush() {
+    const token = githubToken.trim();
+    if (!token) {
+      setError("A GitHub Personal Access Token (PAT) is required to fork and push to your GitHub account.");
+      setShowTokenGuide(true);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setStepStatus("Connecting to GitHub API & verifying token permissions...");
+
+    try {
+      localStorage.setItem("securepatch_github_token", token);
+    } catch {}
+
+    const timer1 = setTimeout(() => {
+      setStepStatus(`Forking ${parsedRepo.owner}/${parsedRepo.repo} to your GitHub account...`);
+    }, 1200);
+
+    const timer2 = setTimeout(() => {
+      setStepStatus("Applying verified AST security patch & audit report locally...");
+    }, 2800);
+
+    const timer3 = setTimeout(() => {
+      setStepStatus("Committing and pushing secured codebase to your forked repository...");
+    }, 4200);
+
+    try {
+      const response = await fetch(`${API}/api/github/fork-and-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repo_url: targetRepo,
+          repo_path: repoPath || "sample_repo",
+          github_token: token,
+          file_path: filePath,
+          patch: patchText,
+          rule_id: ruleId,
+          commit_message: commitMessage,
+        }),
+      });
+
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to fork and push repository.");
+      }
+
+      const data = await response.json();
+      if (data.status === "requires_token") {
+        setError(data.message);
+        setShowTokenGuide(true);
+        return;
+      }
+
+      setResult(data);
+    } catch (err) {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+      setError(err.message || "An unexpected error occurred during fork and push.");
+    } finally {
+      setLoading(false);
+      setStepStatus("");
+    }
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0, 0, 0, 0.8)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !loading) onClose();
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "680px",
+          background: "#050f09",
+          border: "1px solid #1a422b",
+          borderRadius: "14px",
+          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 255, 136, 0.18)",
+          display: "flex",
+          flexDirection: "column",
+          maxHeight: "90vh",
+          overflow: "hidden",
+        }}
+      >
+        {/* Modal Header */}
+        <div
+          style={{
+            padding: "18px 24px",
+            borderBottom: "1px solid #143220",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#081b11",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "rgba(0, 255, 136, 0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#00ff88",
+              }}
+            >
+              <GitFork size={20} />
+            </div>
+            <div>
+              <div
+                style={{
+                  color: "#00ff88",
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  fontFamily: "Syne, sans-serif",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                1-CLICK GITHUB FORK & PUSH
+              </div>
+              <div
+                style={{
+                  color: "#7fa690",
+                  fontSize: "11px",
+                  fontFamily: "DM Mono, monospace",
+                  marginTop: "2px",
+                }}
+              >
+                Fork external repository into your GitHub account and push verified security patches
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#6b8877",
+              cursor: "pointer",
+              padding: "6px",
+              borderRadius: "6px",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div
+          style={{
+            padding: "20px 24px",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          {/* Source ➔ Fork Destination Visual Banner */}
+          <div
+            style={{
+              background: "#040c07",
+              border: "1px solid #153823",
+              borderRadius: "10px",
+              padding: "14px 16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: "180px" }}>
+              <div style={{ fontSize: "9px", color: "#617f6d", fontFamily: "DM Mono, monospace", textTransform: "uppercase" }}>
+                Original Upstream Repository
+              </div>
+              <div style={{ color: "#d2e4d9", fontSize: "12px", fontWeight: 700, fontFamily: "DM Mono, monospace", marginTop: "3px" }}>
+                {parsedRepo.owner}/{parsedRepo.repo}
+              </div>
+            </div>
+
+            <div style={{ color: "#00ff88", fontSize: "18px", fontWeight: 800 }}>➔</div>
+
+            <div style={{ flex: 1, minWidth: "180px" }}>
+              <div style={{ fontSize: "9px", color: "#617f6d", fontFamily: "DM Mono, monospace", textTransform: "uppercase" }}>
+                Target Fork Destination
+              </div>
+              <div style={{ color: "#00ff88", fontSize: "12px", fontWeight: 700, fontFamily: "DM Mono, monospace", marginTop: "3px" }}>
+                @Your-Account / {parsedRepo.repo}
+              </div>
+            </div>
+
+            <div
+              style={{
+                width: "100%",
+                marginTop: "4px",
+                paddingTop: "8px",
+                borderTop: "1px solid #0d2215",
+                fontSize: "10px",
+                color: "#749b83",
+                lineHeight: "1.4",
+              }}
+            >
+              🛡️ <strong>Why Forking Works:</strong> You don't need write permissions on someone else's repo. GitHub officially allows anyone to fork a public repository to their own account and publish remediated code!
+            </div>
+          </div>
+
+          {/* GitHub Personal Access Token Field */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "10px",
+                  fontFamily: "DM Mono, monospace",
+                  color: "#9ee9b8",
+                  textTransform: "uppercase",
+                }}
+              >
+                <Key size={13} style={{ color: "#00ff88" }} />
+                <span>GitHub Personal Access Token (PAT)</span>
+                <span style={{ color: "#ff4455" }}>*</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setShowTokenGuide((prev) => !prev)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#00ff88",
+                  fontSize: "10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  textDecoration: "underline",
+                }}
+              >
+                <HelpCircle size={11} />
+                <span>{showTokenGuide ? "Hide Help" : "How to get free token in 30s"}</span>
+              </button>
+            </div>
+
+            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <input
+                type={showToken ? "text" : "password"}
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                style={{
+                  width: "100%",
+                  height: "38px",
+                  padding: "0 60px 0 12px",
+                  background: "#040b07",
+                  border: "1px solid #1a3826",
+                  borderRadius: "8px",
+                  color: "#00ff88",
+                  fontSize: "12px",
+                  fontFamily: "DM Mono, monospace",
+                  outline: "none",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken((prev) => !prev)}
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  background: "transparent",
+                  border: "none",
+                  color: "#749b83",
+                  fontSize: "10px",
+                  fontFamily: "DM Mono, monospace",
+                  cursor: "pointer",
+                }}
+              >
+                {showToken ? "HIDE" : "SHOW"}
+              </button>
+            </div>
+
+            {/* Token Guide Accordion */}
+            {showTokenGuide && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  padding: "10px 12px",
+                  background: "rgba(0, 255, 136, 0.04)",
+                  border: "1px solid #1a3c28",
+                  borderRadius: "8px",
+                  fontSize: "10px",
+                  color: "#8aa294",
+                  lineHeight: "1.5",
+                }}
+              >
+                <div style={{ color: "#00ff88", fontWeight: 700, marginBottom: "4px" }}>
+                  📋 30-Second Token Guide:
+                </div>
+                1. Open{" "}
+                <a
+                  href="https://github.com/settings/tokens/new?scopes=repo&description=SecurePatch-Fork-Bot"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#00ff88", textDecoration: "underline" }}
+                >
+                  GitHub Token Generator Page ↗
+                </a>
+                <br />
+                2. Check the <strong>repo</strong> checkbox (Full control of private/public repositories).
+                <br />
+                3. Click <strong>Generate token</strong> at the bottom, copy and paste it above.
+              </div>
+            )}
+          </div>
+
+          {/* Vulnerability & Target Module Info */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div
+              style={{
+                background: "#040b07",
+                border: "1px solid #132b1d",
+                borderRadius: "8px",
+                padding: "8px 12px",
+              }}
+            >
+              <div style={{ fontSize: "9px", color: "#617f6d", fontFamily: "DM Mono, monospace", textTransform: "uppercase" }}>
+                Target Vulnerability
+              </div>
+              <div style={{ color: "#ff6677", fontSize: "11px", fontWeight: 700, fontFamily: "DM Mono, monospace", marginTop: "2px" }}>
+                {ruleId}
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: "#040b07",
+                border: "1px solid #132b1d",
+                borderRadius: "8px",
+                padding: "8px 12px",
+              }}
+            >
+              <div style={{ fontSize: "9px", color: "#617f6d", fontFamily: "DM Mono, monospace", textTransform: "uppercase" }}>
+                Remediated File Module
+              </div>
+              <div style={{ color: "#8ab49b", fontSize: "11px", fontFamily: "DM Mono, monospace", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {shortFileName}
+              </div>
+            </div>
+          </div>
+
+          {/* Commit Message */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontSize: "10px",
+                fontFamily: "DM Mono, monospace",
+                color: "#9ee9b8",
+                marginBottom: "6px",
+                textTransform: "uppercase",
+              }}
+            >
+              Git Commit Message:
+            </label>
+            <input
+              value={commitMessage}
+              onChange={(e) => setCommitMessage(e.target.value)}
+              style={{
+                width: "100%",
+                height: "36px",
+                padding: "0 10px",
+                background: "#040b07",
+                border: "1px solid #1a3826",
+                borderRadius: "6px",
+                color: "#c9ded3",
+                fontSize: "11px",
+                fontFamily: "DM Mono, monospace",
+                outline: "none",
+              }}
+            />
+          </div>
+
+          {/* Active Loading Progress Display */}
+          {loading && (
+            <div
+              style={{
+                padding: "12px 14px",
+                background: "rgba(0, 255, 136, 0.08)",
+                border: "1px solid #00ff8855",
+                borderRadius: "8px",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                fontSize: "11px",
+                color: "#00ff88",
+                fontFamily: "DM Mono, monospace",
+              }}
+            >
+              <RefreshCw size={15} className="spin" />
+              <span>{stepStatus || "Processing repository fork and push..."}</span>
+            </div>
+          )}
+
+          {/* Error Message Display */}
+          {error && (
+            <div
+              style={{
+                padding: "10px 14px",
+                background: "rgba(255, 68, 85, 0.1)",
+                border: "1px solid #ff445555",
+                borderRadius: "8px",
+                color: "#ff6677",
+                fontSize: "11px",
+                lineHeight: "1.5",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Success Result Display */}
+          {result && (
+            <div
+              style={{
+                padding: "14px 16px",
+                background: "rgba(0, 255, 136, 0.1)",
+                border: "1px solid #00ff8888",
+                borderRadius: "10px",
+                fontSize: "11px",
+                lineHeight: "1.6",
+                boxShadow: "0 0 20px rgba(0, 255, 136, 0.15)",
+              }}
+            >
+              <div style={{ color: "#00ff88", fontWeight: 800, fontSize: "13px", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+                <CheckCircle2 size={16} />
+                <span>Repository Forked & Secured on GitHub!</span>
+              </div>
+
+              <div style={{ color: "#a5cdb6", marginBottom: "10px" }}>
+                Your secured repository is now live under <strong>@{result.my_username}</strong> with verified AST security patches and an audit report!
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                <a
+                  href={result.fork_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "#00ff88",
+                    color: "#031207",
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    fontWeight: 800,
+                    fontSize: "11px",
+                    textDecoration: "none",
+                  }}
+                >
+                  <span>View Secured Repo on GitHub ↗</span>
+                  <ExternalLink size={13} />
+                </a>
+
+                {result.compare_pr_url && (
+                  <a
+                    href={result.compare_pr_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "#081a10",
+                      border: "1px solid #1f4a31",
+                      color: "#9ee9b8",
+                      padding: "8px 14px",
+                      borderRadius: "6px",
+                      fontWeight: 600,
+                      fontSize: "11px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <span>Open PR to Original Author ↗</span>
+                    <GitPullRequest size={13} />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer Actions */}
+        <div
+          style={{
+            padding: "16px 24px",
+            borderTop: "1px solid #163322",
+            background: "#0a1b11",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            gap: "10px",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              padding: "0 16px",
+              height: "38px",
+              background: "#08150d",
+              border: "1px solid #1d3e2b",
+              borderRadius: "8px",
+              color: "#84a592",
+              fontSize: "11px",
+              fontFamily: "DM Mono, monospace",
+              cursor: "pointer",
+            }}
+          >
+            {result ? "CLOSE" : "CANCEL"}
+          </button>
+
+          {!result && (
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleForkAndPush}
+              disabled={loading}
+              style={{
+                height: "38px",
+                padding: "0 22px",
+                fontSize: "11px",
+                background: "linear-gradient(135deg, #00ff88 0%, #00bb66 100%)",
+                color: "#031006",
+                fontWeight: 800,
+                border: "none",
+                boxShadow: "0 4px 14px rgba(0, 255, 136, 0.25)",
+              }}
+            >
+              {loading ? (
+                <>
+                  <RefreshCw size={14} className="spin" />
+                  <span>FORKING & PUSHING...</span>
+                </>
+              ) : (
+                <>
+                  <GitFork size={14} />
+                  <span>🍴 FORK & PUSH TO MY GITHUB (1-CLICK)</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
