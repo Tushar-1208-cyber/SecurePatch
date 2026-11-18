@@ -26,7 +26,9 @@ import {
   RefreshCw,
   Search,
   Shield,
+  ShieldAlert,
   ShieldCheck,
+  Bug,
   Terminal,
   TestTube2,
   Upload,
@@ -139,6 +141,7 @@ function App() {
   const [downloading, setDownloading] = useState(false);
   const [stage, setStage] = useState("scan");
   const [error, setError] = useState("");
+  const [showDorksModal, setShowDorksModal] = useState(false);
 
   // Live Streaming Audit Console State
   const [liveLogs, setLiveLogs] = useState([]);
@@ -1346,6 +1349,13 @@ async function generatePatch(model = "qwen2.5-coder") {
         )}
       </main>
 
+      {showDorksModal && (
+        <VulnerableDiscoveryModal
+          isOpen={showDorksModal}
+          onClose={() => setShowDorksModal(false)}
+          onSelectRepo={(url) => setGithubUrl(url)}
+        />
+      )}
     </div>
   );
 }
@@ -1730,31 +1740,26 @@ function Overview({
 
                 <button
                   type="button"
-                  onClick={() =>
-                    window.open(
-                      "https://github.com/search?q=language%3Apython&type=repositories",
-                      "_blank",
-                      "noopener,noreferrer"
-                    )
-                  }
+                  onClick={() => setShowDorksModal(true)}
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
-                    background: "transparent",
-                    border: "1px solid #234633",
+                    background: "rgba(0, 255, 136, 0.08)",
+                    border: "1px solid #00ff8855",
                     color: "#00ff88",
-                    padding: "5px 11px",
+                    padding: "5px 12px",
                     borderRadius: "6px",
                     fontSize: "10px",
                     fontFamily: "DM Mono, monospace",
                     cursor: "pointer",
+                    fontWeight: 700,
                     transition: "all 0.15s ease",
                   }}
-                  title="Search repositories on GitHub in a new tab"
+                  title="Find guaranteed vulnerable repositories using GitHub Dorks"
                 >
-                  <ExternalLink size={12} />
-                  <span>Open GitHub Search ↗</span>
+                  <Search size={12} />
+                  <span>🎯 Find Vulnerable Repos (GitHub Dorks)</span>
                 </button>
               </div>
 
@@ -1897,13 +1902,14 @@ function Overview({
                     </button>
                   </div>
 
-                  {/* QUICK PRESET */}
+                  {/* QUICK PRESETS */}
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "10px",
+                      gap: "8px",
                       marginTop: "14px",
+                      flexWrap: "wrap",
                     }}
                   >
                     <span
@@ -1914,7 +1920,7 @@ function Overview({
                         textTransform: "uppercase",
                       }}
                     >
-                      Quick Preset:
+                      Quick Presets:
                     </span>
 
                     <button
@@ -1932,7 +1938,65 @@ function Overview({
                         transition: "all 0.15s ease",
                       }}
                     >
-                      ⚡ Tushar-1208-cyber/SecurePatch
+                      ⚡ SecurePatch Benchmark (10 Bugs)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGithubUrl("https://github.com/adeyosemanputra/pygoat.git")}
+                      style={{
+                        background: "#08130c",
+                        border: "1px solid #1a3626",
+                        color: "#ffaa00",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "10px",
+                        fontFamily: "DM Mono, monospace",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      🛡️ OWASP PyGoat (Vulnerable)
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setGithubUrl("https://github.com/we45/Vulnerable-Flask-App.git")}
+                      style={{
+                        background: "#08130c",
+                        border: "1px solid #1a3626",
+                        color: "#ff6677",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "10px",
+                        fontFamily: "DM Mono, monospace",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      ⚠️ Vulnerable-Flask-App
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowDorksModal(true)}
+                      style={{
+                        background: "rgba(0, 212, 255, 0.08)",
+                        border: "1px solid #00d4ff44",
+                        color: "#00d4ff",
+                        padding: "4px 10px",
+                        borderRadius: "6px",
+                        fontSize: "10px",
+                        fontFamily: "DM Mono, monospace",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Search size={11} />
+                      <span>🎯 GitHub Dorks & More...</span>
                     </button>
                   </div>
                 </div>
@@ -6491,6 +6555,417 @@ function GitHubPRModal({
               <span>OPEN GITHUB PULL REQUEST ↗</span>
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================
+   VULNERABILITY DISCOVERY & GITHUB DORKS MODAL
+========================================================= */
+
+function VulnerableDiscoveryModal({ isOpen, onClose, onSelectRepo }) {
+  if (!isOpen) return null;
+
+  const curatedRepos = [
+    {
+      name: "Tushar-1208-cyber / SecurePatch",
+      url: "https://github.com/Tushar-1208-cyber/SecurePatch.git",
+      tag: "Built-in Benchmark",
+      badgeColor: "#00ff88",
+      description: "10 Empirical Vulnerability Classes: Insecure MD5 (B324), Command Injection (B602), YAML (B506), Pickle (B301), Eval/Exec (B102, B307), SQL Injection (B608).",
+      vulnerabilities: ["B324 MD5", "B602 Shell", "B506 YAML", "B301 Pickle", "B608 SQLi"],
+    },
+    {
+      name: "adeyosemanputra / pygoat",
+      url: "https://github.com/adeyosemanputra/pygoat.git",
+      tag: "OWASP Benchmark",
+      badgeColor: "#ffaa00",
+      description: "Official OWASP Top 10 intentionally vulnerable Python web application. Contains SQL injection, command execution, insecure deserialization, and crypto flaws.",
+      vulnerabilities: ["SQL Injection", "Command Exec", "Insecure Deserialization", "Weak Crypto"],
+    },
+    {
+      name: "we45 / Vulnerable-Flask-App",
+      url: "https://github.com/we45/Vulnerable-Flask-App.git",
+      tag: "Real Flask Vulnerabilities",
+      badgeColor: "#ff4455",
+      description: "Vulnerable Python Flask web application designed for SAST & DAST tool training. Real vulnerable endpoints with database queries and shell execution.",
+      vulnerabilities: ["B602 Subprocess", "B608 SQL Injection", "B102 Exec", "B506 YAML"],
+    },
+    {
+      name: "snoopysecurity / dvpwa",
+      url: "https://github.com/snoopysecurity/dvpwa.git",
+      tag: "Damn Vulnerable Python Web App",
+      badgeColor: "#00d4ff",
+      description: "Damn Vulnerable Python Web Application created intentionally for security vulnerability benchmarking and automated remediation.",
+      vulnerabilities: ["Remote Code Execution", "SQL Injection", "Path Traversal"],
+    },
+  ];
+
+  const githubDorks = [
+    {
+      title: "Subprocess Command Injection (shell=True)",
+      query: 'language:python "subprocess.Popen(" "shell=True"',
+      url: 'https://github.com/search?q=language%3Apython+%22subprocess.Popen%28%22+%22shell%3DTrue%22&type=code',
+      flaw: "Bandit B602 · CWE-78",
+      severity: "HIGH",
+    },
+    {
+      title: "Insecure MD5 / SHA1 Hash Functions",
+      query: 'language:python "hashlib.md5("',
+      url: 'https://github.com/search?q=language%3Apython+%22hashlib.md5%28%22&type=code',
+      flaw: "Bandit B324 · CWE-328",
+      severity: "HIGH",
+    },
+    {
+      title: "SQL Injection via String Format (%s / .format)",
+      query: 'language:python "cursor.execute(" "%s"',
+      url: 'https://github.com/search?q=language%3Apython+%22cursor.execute%28%22+%22%25s%22&type=code',
+      flaw: "Bandit B608 · CWE-89",
+      severity: "MEDIUM",
+    },
+    {
+      title: "Unsafe YAML Load (Arbitrary Code Execution)",
+      query: 'language:python "yaml.load("',
+      url: 'https://github.com/search?q=language%3Apython+%22yaml.load%28%22&type=code',
+      flaw: "Bandit B506 · CWE-20",
+      severity: "MEDIUM",
+    },
+    {
+      title: "Unsafe Pickle Deserialization",
+      query: 'language:python "pickle.loads("',
+      url: 'https://github.com/search?q=language%3Apython+%22pickle.loads%28%22&type=code',
+      flaw: "Bandit B301 · CWE-502",
+      severity: "MEDIUM",
+    },
+    {
+      title: "Dynamic Eval / Exec Code Execution",
+      query: 'language:python "eval(" OR "exec("',
+      url: 'https://github.com/search?q=language%3Apython+%22eval%28%22+OR+%22exec%28%22&type=code',
+      flaw: "Bandit B102/B307 · CWE-95",
+      severity: "MEDIUM",
+    },
+    {
+      title: "Intentionally Vulnerable Python Repositories",
+      query: "vulnerable python app language:python",
+      url: "https://github.com/search?q=vulnerable+python+app+language%3Apython&type=repositories",
+      flaw: "Full Vulnerable Suites",
+      severity: "ALL",
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(3, 10, 6, 0.88)",
+        backdropFilter: "blur(6px)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "760px",
+          background: "#07140c",
+          border: "1px solid #1f422e",
+          borderRadius: "14px",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(0, 255, 136, 0.1)",
+          overflow: "hidden",
+          maxHeight: "90vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          style={{
+            padding: "18px 24px",
+            borderBottom: "1px solid #163322",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            background: "#0a1b11",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div
+              style={{
+                width: "34px",
+                height: "34px",
+                borderRadius: "8px",
+                background: "rgba(0, 255, 136, 0.12)",
+                color: "#00ff88",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Bug size={18} />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "#00ff88",
+                  fontFamily: "DM Mono, monospace",
+                  fontWeight: 700,
+                  letterSpacing: "1px",
+                }}
+              >
+                VULNERABILITY DISCOVERY & GITHUB DORKS
+              </div>
+              <h3
+                style={{
+                  margin: "2px 0 0",
+                  fontSize: "17px",
+                  fontWeight: 700,
+                  color: "#eaf5ee",
+                }}
+              >
+                Find & Audit Vulnerable Repositories
+              </h3>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#7e978a",
+              cursor: "pointer",
+              padding: "6px",
+              borderRadius: "6px",
+            }}
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div
+          style={{
+            padding: "20px 24px",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+          }}
+        >
+          {/* Explanation Banner */}
+          <div
+            style={{
+              padding: "12px 16px",
+              background: "rgba(0, 255, 136, 0.06)",
+              border: "1px solid #1a3826",
+              borderRadius: "10px",
+              fontSize: "11px",
+              color: "#a4c2b2",
+              lineHeight: "1.6",
+            }}
+          >
+            💡 <strong>Why generic GitHub search fails:</strong> Regular popular repositories on GitHub are sanitized and have 0 vulnerabilities. To audit real vulnerabilities with SecurePatch, either choose one of the <strong>1-Click Curated Vulnerable Repositories</strong> below or use our <strong>Targeted GitHub Dorks</strong> to find live vulnerable code!
+          </div>
+
+          {/* Section 1: Curated Vulnerable Repositories */}
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#00ff88",
+                fontFamily: "DM Mono, monospace",
+                fontWeight: 700,
+                letterSpacing: "0.8px",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <ShieldAlert size={14} />
+              <span>1-CLICK CURATED VULNERABLE REPOSITORIES (GUARANTEED FLAWS)</span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {curatedRepos.map((repo, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    padding: "12px 14px",
+                    background: "#08160f",
+                    border: "1px solid #1a3826",
+                    borderRadius: "10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                    cursor: "pointer",
+                    transition: "all 0.18s ease",
+                  }}
+                  className="curated-repo-card"
+                  onClick={() => {
+                    onSelectRepo(repo.url);
+                    onClose();
+                  }}
+                >
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#e6f3ec", fontFamily: "DM Mono, monospace" }}>
+                        {repo.name}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "8px",
+                          fontWeight: 700,
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          background: `${repo.badgeColor}18`,
+                          border: `1px solid ${repo.badgeColor}44`,
+                          color: repo.badgeColor,
+                          fontFamily: "DM Mono, monospace",
+                        }}
+                      >
+                        {repo.tag}
+                      </span>
+                    </div>
+
+                    <p style={{ margin: "4px 0 8px", fontSize: "10px", color: "#7e978a", lineHeight: "1.5" }}>
+                      {repo.description}
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                      {repo.vulnerabilities.slice(0, 3).map((v, i) => (
+                        <span key={i} style={{ fontSize: "8px", padding: "1px 5px", background: "#0c2014", color: "#8ce4ad", borderRadius: "3px" }}>
+                          {v}
+                        </span>
+                      ))}
+                    </div>
+                    <span style={{ fontSize: "10px", color: "#00ff88", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+                      LOAD →
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 2: GitHub Vulnerability Dorks */}
+          <div>
+            <div
+              style={{
+                fontSize: "11px",
+                color: "#00d4ff",
+                fontFamily: "DM Mono, monospace",
+                fontWeight: 700,
+                letterSpacing: "0.8px",
+                marginBottom: "10px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <Terminal size={14} />
+              <span>LIVE GITHUB SEARCH DORKS (CLICK TO FIND REAL VULNERABLE CODE ON GITHUB)</span>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {githubDorks.map((dork, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    background: "#08160f",
+                    border: "1px solid #1a3826",
+                    borderRadius: "8px",
+                    gap: "10px",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 700, color: "#d9e8df" }}>
+                        {dork.title}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "8px",
+                          fontWeight: 700,
+                          padding: "1px 5px",
+                          borderRadius: "3px",
+                          background: dork.severity === "HIGH" ? "rgba(255, 68, 85, 0.15)" : "rgba(255, 170, 0, 0.15)",
+                          color: dork.severity === "HIGH" ? "#ff4455" : "#ffaa00",
+                        }}
+                      >
+                        {dork.flaw}
+                      </span>
+                    </div>
+                    <code style={{ fontSize: "10px", color: "#6e8d7d", fontFamily: "DM Mono, monospace" }}>
+                      {dork.query}
+                    </code>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => window.open(dork.url, "_blank", "noopener,noreferrer")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      background: "rgba(0, 212, 255, 0.08)",
+                      border: "1px solid #00d4ff44",
+                      color: "#00d4ff",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontFamily: "DM Mono, monospace",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    <ExternalLink size={12} />
+                    <span>Search on GitHub ↗</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          style={{
+            padding: "14px 24px",
+            borderTop: "1px solid #163322",
+            background: "#0a1b11",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontSize: "10px", color: "#648171", fontFamily: "DM Mono, monospace" }}>
+            Click any repository above to automatically load into SecurePatch
+          </span>
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={onClose}
+            style={{ padding: "6px 16px", fontSize: "11px" }}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
