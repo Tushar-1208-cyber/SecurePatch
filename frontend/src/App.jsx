@@ -32,6 +32,7 @@ import {
   Terminal,
   TestTube2,
   Upload,
+  User,
   Wrench,
   XCircle,
   Zap,
@@ -1056,6 +1057,31 @@ async function generatePatch(model = "qwen2.5-coder") {
 
           <div className="top-actions">
 
+            <a
+              href="https://github.com/Tushar-1208-cyber?tab=repositories"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 12px",
+                background: "#081b12",
+                border: "1px solid #1f4d33",
+                borderRadius: "6px",
+                color: "#00ff88",
+                fontSize: "11px",
+                fontFamily: "DM Mono, monospace",
+                textDecoration: "none",
+                fontWeight: 600,
+                transition: "all 0.15s ease",
+              }}
+              title="Open your GitHub profile & repositories (@Tushar-1208-cyber)"
+            >
+              <User size={13} />
+              <span>@Tushar-1208-cyber ↗</span>
+            </a>
+
             <div className="live-status">
               <span />
               LIVE
@@ -1738,29 +1764,90 @@ function Overview({
                   <span>Repository Ingestion</span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowDorksModal(true)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    background: "rgba(0, 255, 136, 0.08)",
-                    border: "1px solid #00ff8855",
-                    color: "#00ff88",
-                    padding: "5px 12px",
-                    borderRadius: "6px",
-                    fontSize: "10px",
-                    fontFamily: "DM Mono, monospace",
-                    cursor: "pointer",
-                    fontWeight: 700,
-                    transition: "all 0.15s ease",
-                  }}
-                  title="Find guaranteed vulnerable repositories using GitHub Dorks"
-                >
-                  <Search size={12} />
-                  <span>🎯 Find Vulnerable Repos (GitHub Dorks)</span>
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        "https://github.com/Tushar-1208-cyber?tab=repositories",
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
+                    }
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "#081b12",
+                      border: "1px solid #1f4d33",
+                      color: "#9ee9b8",
+                      padding: "5px 11px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontFamily: "DM Mono, monospace",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Open your GitHub profile & repositories (Tushar-1208-cyber)"
+                  >
+                    <User size={12} style={{ color: "#00ff88" }} />
+                    <span>My GitHub (Tushar) ↗</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        "https://github.com/search?q=language%3Apython&type=repositories",
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
+                    }
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "transparent",
+                      border: "1px solid #1a3626",
+                      color: "#7fa690",
+                      padding: "5px 10px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontFamily: "DM Mono, monospace",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Search repositories on GitHub in a new tab"
+                  >
+                    <ExternalLink size={12} />
+                    <span>Open GitHub Search ↗</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowDorksModal(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "rgba(0, 255, 136, 0.08)",
+                      border: "1px solid #00ff8855",
+                      color: "#00ff88",
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontFamily: "DM Mono, monospace",
+                      cursor: "pointer",
+                      fontWeight: 700,
+                      transition: "all 0.15s ease",
+                    }}
+                    title="Find guaranteed vulnerable repositories using GitHub Dorks"
+                  >
+                    <Search size={12} />
+                    <span>🎯 Find Vulnerable Repos (Dorks)</span>
+                  </button>
+                </div>
               </div>
 
               {/* METHOD TABS */}
@@ -1937,8 +2024,9 @@ function Overview({
                         cursor: "pointer",
                         transition: "all 0.15s ease",
                       }}
+                      title="Load your repository: Tushar-1208-cyber/SecurePatch"
                     >
-                      ⚡ SecurePatch Benchmark (10 Bugs)
+                      ⚡ My Repo (Tushar-1208-cyber/SecurePatch)
                     </button>
 
                     <button
