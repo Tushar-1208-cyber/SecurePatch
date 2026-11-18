@@ -161,13 +161,19 @@ def resolve_file(repo_path: str, file_path: str) -> Path:
 
 
 def run_bandit(repo_path: str):
+    target = Path(repo_path)
+    if not target.is_absolute():
+        target = (PROJECT_ROOT / target).resolve()
+    else:
+        target = target.resolve()
+
     result = subprocess.run(
         [
             sys.executable,
             "-m",
             "bandit",
             "-r",
-            repo_path,
+            str(target),
             "-f",
             "json",
             "--skip",
@@ -177,14 +183,26 @@ def run_bandit(repo_path: str):
         text=True,
         encoding="utf-8",
         errors="replace",
+        cwd=str(PROJECT_ROOT),
     )
-    if not result.stdout.strip():
+    raw = result.stdout.strip()
+    if not raw:
         return {
             "results": [],
             "errors": result.stderr,
         }
+
+    # Robust JSON boundary extraction: find opening '{' and matching closing '}'
+    start_idx = raw.find("{")
+    end_idx = raw.rfind("}")
+    if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+        try:
+            return json.loads(raw[start_idx : end_idx + 1])
+        except json.JSONDecodeError:
+            pass
+
     try:
-        return json.loads(result.stdout)
+        return json.loads(raw)
     except json.JSONDecodeError:
         return {
             "results": [],
