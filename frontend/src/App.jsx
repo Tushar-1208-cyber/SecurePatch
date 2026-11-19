@@ -5219,8 +5219,39 @@ function PatchView({
 
         <div className="panel">
 
-          <div className="section-kicker">
-            REPAIR PLAN
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "10px",
+              marginBottom: "12px",
+            }}
+          >
+            <div>
+              <div className="section-kicker">
+                REPAIR PLAN & SANDBOX EXECUTION
+              </div>
+              <h3 style={{ margin: "3px 0 0", fontSize: "16px" }}>
+                Validate Remediated Patch
+              </h3>
+            </div>
+            {patchData && (
+              <span
+                style={{
+                  fontFamily: "DM Mono, monospace",
+                  fontSize: "10px",
+                  color: "#6ee7b7",
+                  background: "rgba(110, 231, 183, 0.08)",
+                  border: "1px solid #1f4330",
+                  borderRadius: "6px",
+                  padding: "4px 10px",
+                }}
+              >
+                TARGET: {patchData.patch?.model || selectedModel}
+              </span>
+            )}
           </div>
 
           <div className="plan">
@@ -5252,61 +5283,125 @@ function PatchView({
           </div>
 
           {patchData && (
-            <>
-
-              <div className="context-item">
-
-                <div className="context-title">
-                  PROVIDER
-                </div>
-
-                <div className="context-value">
-                  {patchData.patch
-                    ?.provider ||
-                    "mock"}
-                </div>
-
-              </div>
-
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "16px",
+                marginTop: "16px",
+                padding: "16px 20px",
+                background: "#060d09",
+                border: "1px solid #183324",
+                borderRadius: "10px",
+              }}
+            >
               <div
-                className="context-item"
                 style={{
-                  marginTop:
-                    "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "24px",
+                  flexWrap: "wrap",
                 }}
               >
-
-                <div className="context-title">
-                  MODEL
+                <div>
+                  <div
+                    style={{
+                      font: "9px 'DM Mono', monospace",
+                      color: "#62756a",
+                      textTransform: "uppercase",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    PROVIDER
+                  </div>
+                  <div
+                    style={{
+                      font: "12px 'DM Mono', monospace",
+                      color: "#8eeaad",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {patchData.patch?.provider || "ollama"}
+                  </div>
                 </div>
 
-                <div className="context-value">
-                  {patchData.patch
-                    ?.model ||
-                    "securepatch-mock"}
+                <div
+                  style={{
+                    width: "1px",
+                    height: "26px",
+                    background: "#192c21",
+                  }}
+                />
+
+                <div>
+                  <div
+                    style={{
+                      font: "9px 'DM Mono', monospace",
+                      color: "#62756a",
+                      textTransform: "uppercase",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    MODEL
+                  </div>
+                  <div
+                    style={{
+                      font: "12px 'DM Mono', monospace",
+                      color: "#7dd3fc",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {patchData.patch?.model || selectedModel}
+                  </div>
                 </div>
 
+                <div
+                  style={{
+                    width: "1px",
+                    height: "26px",
+                    background: "#192c21",
+                  }}
+                />
+
+                <div>
+                  <div
+                    style={{
+                      font: "9px 'DM Mono', monospace",
+                      color: "#62756a",
+                      textTransform: "uppercase",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    EXECUTION TARGET
+                  </div>
+                  <div
+                    style={{
+                      font: "11px 'DM Mono', monospace",
+                      color: "#a7f3d0",
+                    }}
+                  >
+                    Sandbox Isolation ({finding?.filename ? finding.filename.split(/[\\/]/).pop() : "app.py"})
+                  </div>
+                </div>
               </div>
 
               <button
-                className="primary-btn wide"
+                className="primary-btn"
                 style={{
-                  marginTop:
-                    "14px",
+                  minWidth: "260px",
+                  padding: "13px 26px",
+                  fontSize: "12px",
+                  fontWeight: 800,
+                  letterSpacing: "0.05em",
                 }}
-                onClick={
-                  onValidate
-                }
+                onClick={onValidate}
               >
-
-                <LockKeyhole
-                  size={16}
-                />
-
+                <LockKeyhole size={16} />
                 APPLY & VALIDATE
               </button>
-
-            </>
+            </div>
           )}
 
         </div>
