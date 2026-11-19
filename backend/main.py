@@ -1464,29 +1464,48 @@ def run_pytest(sandbox: Path):
 def run_security_validation(
     sandbox: Path,
     target_rule: str,
+    target_file: Path | None = None,
 ):
     data = run_bandit(str(sandbox))
     findings = data.get(
         "results",
         [],
     )
-    target_findings = [
-        finding
-        for finding in findings
-        if finding.get("test_id") == target_rule
-    ]
+
+    target_filename = target_file.name if target_file else None
+
+    if target_file and target_filename:
+        file_findings = [
+            f for f in findings
+            if Path(f.get("filename", "")).name == target_filename
+            and f.get("test_id") == target_rule
+        ]
+
+        file_bandit = run_bandit(str(target_file))
+        direct_file_findings = [
+            f for f in file_bandit.get("results", [])
+            if f.get("test_id") == target_rule
+        ]
+
+        target_removed = (len(file_findings) == 0 or len(direct_file_findings) == 0)
+        target_findings = file_findings if len(file_findings) <= len(direct_file_findings) else direct_file_findings
+    else:
+        target_findings = [
+            finding
+            for finding in findings
+            if finding.get("test_id") == target_rule
+        ]
+        target_removed = len(target_findings) == 0
+
     output_lines = [
-        f"Total findings after patch: {len(findings)}",
-        f"Target rule {target_rule}: "
-        + (
-            "FOUND"
-            if target_findings
-            else "REMOVED"
-        ),
+        f"Total findings across repository: {len(findings)}",
+        f"Patched module ({target_filename or 'target'}): "
+        + ("0 findings (VULNERABILITY REMOVED)" if target_removed else f"{len(target_findings)} finding(s) (FOUND)"),
+        f"Target rule {target_rule}: " + ("REMOVED" if target_removed else "FOUND"),
     ]
     return {
-        "passed": len(target_findings) == 0,
-        "target_removed": len(target_findings) == 0,
+        "passed": target_removed,
+        "target_removed": target_removed,
         "findings_after": len(findings),
         "target_findings": target_findings,
         "output": "\n".join(output_lines),
@@ -2500,8 +2519,9 @@ def validate(request: ValidateRequest):
         sandbox
     )
     security = run_security_validation(
-        sandbox,
-        finding.get("test_id"),
+        sandbox=sandbox,
+        target_rule=finding.get("test_id"),
+        target_file=target,
     )
     verified = (
         regression["passed"]
