@@ -601,6 +601,8 @@ def extract_function(code, line):
         tree = ast.parse(code)
     except SyntaxError:
         return None
+
+    # 1. Exact match in FunctionDef / AsyncFunctionDef (functions & class methods)
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             start = node.lineno
@@ -612,7 +614,93 @@ def extract_function(code, line):
                     "line": start,
                     "end_line": end,
                     "code": function_code or "",
+                    "is_synthetic": False,
                 }
+
+    # 2. Proximity match (decorators, signature line breaks, or line within 5 lines of a function)
+    closest_func = None
+    min_dist = float("inf")
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            start = node.lineno
+            end = getattr(node, "end_lineno", node.lineno)
+            dist = min(abs(line - start), abs(line - end))
+            if dist < min_dist and dist <= 5:
+                min_dist = dist
+                closest_func = (node, start, end)
+
+    if closest_func:
+        node, start, end = closest_func
+        function_code = ast.get_source_segment(code, node)
+        return {
+            "name": node.name,
+            "line": start,
+            "end_line": end,
+            "code": function_code or "",
+            "is_synthetic": False,
+        }
+
+    # 3. Module-level / Top-level statement fallback
+    # If the finding is outside any function (e.g. global dict, config, import, top-level call):
+    target_stmt = None
+    for stmt in tree.body:
+        s_start = stmt.lineno
+        s_end = getattr(stmt, "end_lineno", stmt.lineno)
+        if s_start <= line <= s_end:
+            target_stmt = (stmt, s_start, s_end)
+            break
+
+    # If line fell into comments/whitespace, take nearest top-level statement
+    if not target_stmt and tree.body:
+        best_stmt = None
+        best_d = float("inf")
+        for stmt in tree.body:
+            s_start = stmt.lineno
+            s_end = getattr(stmt, "end_lineno", stmt.lineno)
+            d = min(abs(line - s_start), abs(line - s_end))
+            if d < best_d:
+                best_d = d
+                best_stmt = (stmt, s_start, s_end)
+        if best_stmt and best_d <= 20:
+            target_stmt = best_stmt
+
+    if target_stmt:
+        stmt, s_start, s_end = target_stmt
+        raw_segment = ast.get_source_segment(code, stmt) or ""
+        if not raw_segment.strip():
+            code_lines = code.splitlines()
+            raw_segment = "\n".join(code_lines[max(0, s_start - 1):min(len(code_lines), s_end)])
+
+        wrapper_name = "remediate_module_block"
+        indented_body = "\n".join(f"    {l}" for l in raw_segment.splitlines())
+        synthetic_code = f"def {wrapper_name}():\n{indented_body}"
+        return {
+            "name": wrapper_name,
+            "line": s_start,
+            "end_line": s_end,
+            "code": synthetic_code,
+            "is_synthetic": True,
+            "original_statement": raw_segment,
+        }
+
+    # 4. Ultimate fallback: wrap surrounding lines if file has any content
+    code_lines = code.splitlines()
+    if code_lines:
+        s_start = max(1, line - 4)
+        s_end = min(len(code_lines), line + 4)
+        raw_segment = "\n".join(code_lines[s_start - 1:s_end])
+        wrapper_name = "remediate_module_block"
+        indented_body = "\n".join(f"    {l}" for l in raw_segment.splitlines())
+        synthetic_code = f"def {wrapper_name}():\n{indented_body}"
+        return {
+            "name": wrapper_name,
+            "line": s_start,
+            "end_line": s_end,
+            "code": synthetic_code,
+            "is_synthetic": True,
+            "original_statement": raw_segment,
+        }
+
     return None
 
 
@@ -1163,6 +1251,41 @@ def apply_function_patch(
             f"Generated function name '{generated_node.name}' "
             f"does not match original function '{old_name}'."
         )
+
+    if old_name == "remediate_module_block":
+        body_lines = []
+        for line_str in candidate.splitlines():
+            stripped = line_str.strip()
+            if stripped.startswith("def remediate_module_block") or stripped == "pass":
+                continue
+            if line_str.startswith("    "):
+                body_lines.append(line_str[4:])
+            else:
+                body_lines.append(line_str)
+        replacement_block = "\n".join(body_lines).strip()
+
+        old_body_lines = []
+        for line_str in old_function.splitlines():
+            stripped = line_str.strip()
+            if stripped.startswith("def remediate_module_block") or stripped == "pass":
+                continue
+            if line_str.startswith("    "):
+                old_body_lines.append(line_str[4:])
+            else:
+                old_body_lines.append(line_str)
+        old_raw = "\n".join(old_body_lines).strip()
+
+        if old_raw and old_raw in code:
+            patched = code.replace(old_raw, replacement_block, 1)
+        else:
+            patched = code + "\n" + replacement_block
+
+        try:
+            ast.parse(patched)
+        except SyntaxError as exc:
+            raise ValueError(f"Patched file is not valid Python: {exc}") from exc
+        target.write_text(patched, encoding="utf-8", newline="")
+        return target
     candidates = [
         n for n in ast.walk(tree)
         if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
