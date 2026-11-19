@@ -5100,6 +5100,9 @@ function PatchView({
                       lineHeight: "1.6",
                       color: "#fca5a5",
                       whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      overflowX: "auto",
+                      maxWidth: "100%",
                     }}
                   >
                     {patchData.patch?.original || analysis?.affected_function?.code || "Original function code"}
@@ -5135,6 +5138,9 @@ function PatchView({
                       lineHeight: "1.6",
                       color: "#86efac",
                       whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      overflowX: "auto",
+                      maxWidth: "100%",
                     }}
                   >
                     {patchData.patch?.patch || patchData.patch?.function || "Secured function code"}
@@ -5286,26 +5292,27 @@ function PatchView({
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "16px",
+                flexDirection: "column",
+                gap: "14px",
                 marginTop: "16px",
-                padding: "16px 20px",
+                padding: "16px 18px",
                 background: "#060d09",
                 border: "1px solid #183324",
                 borderRadius: "10px",
+                width: "100%",
+                boxSizing: "border-box",
               }}
             >
               <div
                 style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "24px",
-                  flexWrap: "wrap",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "12px",
+                  alignItems: "stretch",
+                  width: "100%",
                 }}
               >
-                <div>
+                <div style={{ background: "#0a130f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #15271d" }}>
                   <div
                     style={{
                       font: "9px 'DM Mono', monospace",
@@ -5327,15 +5334,7 @@ function PatchView({
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    width: "1px",
-                    height: "26px",
-                    background: "#192c21",
-                  }}
-                />
-
-                <div>
+                <div style={{ background: "#0a130f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #15271d" }}>
                   <div
                     style={{
                       font: "9px 'DM Mono', monospace",
@@ -5357,15 +5356,7 @@ function PatchView({
                   </div>
                 </div>
 
-                <div
-                  style={{
-                    width: "1px",
-                    height: "26px",
-                    background: "#192c21",
-                  }}
-                />
-
-                <div>
+                <div style={{ background: "#0a130f", padding: "10px 14px", borderRadius: "8px", border: "1px solid #15271d" }}>
                   <div
                     style={{
                       font: "9px 'DM Mono', monospace",
@@ -5380,25 +5371,33 @@ function PatchView({
                     style={{
                       font: "11px 'DM Mono', monospace",
                       color: "#a7f3d0",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
-                    Sandbox Isolation ({finding?.filename ? finding.filename.split(/[\\/]/).pop() : "app.py"})
+                    Sandbox ({finding?.filename ? finding.filename.split(/[\\/]/).pop() : "app.py"})
                   </div>
                 </div>
               </div>
 
               <button
-                className="primary-btn"
+                className="primary-btn wide"
                 style={{
-                  minWidth: "260px",
-                  padding: "13px 26px",
-                  fontSize: "12px",
+                  width: "100%",
+                  padding: "16px 20px",
+                  fontSize: "13px",
                   fontWeight: 800,
-                  letterSpacing: "0.05em",
+                  letterSpacing: "0.06em",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  boxShadow: "0 0 24px rgba(92,244,157,0.25)",
                 }}
                 onClick={onValidate}
               >
-                <LockKeyhole size={16} />
+                <LockKeyhole size={18} />
                 APPLY & VALIDATE
               </button>
             </div>
