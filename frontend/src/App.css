@@ -120,7 +120,8 @@ button { cursor: pointer; }
 .detail-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 5px 2px; }
 .detail-header h2 { margin: 5px 0 6px; font-size: 25px; letter-spacing: -.04em; }
 .detail-header p { margin: 0; color: #718279; font-size: 12px; }
-.two-col, .patch-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.patch-layout { display: flex; flex-direction: column; gap: 18px; }
 .code-card { padding: 0; overflow: hidden; }
 .code-head { padding: 11px 15px; display: flex; justify-content: space-between; background: #0a110e; border-bottom: 1px solid #1b2821; font: 9px "DM Mono", monospace; color: #6e8177; }
 .code-card pre { margin: 0; padding: 22px; min-height: 210px; color: #c7d6ce; background: #080e0b; font: 12px/1.8 "DM Mono", monospace; }
@@ -156,11 +157,11 @@ button { cursor: pointer; }
 .diff-line.add { color: #8be8aa; background: #0b1a11; }
 .guardrails { display: flex; flex-wrap: wrap; gap: 7px; }
 .guardrails span { border: 1px solid #234534; background: #0b1710; color: #79d99e; border-radius: 999px; padding: 6px 8px; font-size: 8px; display: flex; align-items: center; gap: 5px; }
-.plan { margin: 15px 0; }
-.plan-step { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid #17231e; color: #62756a; }
+.plan { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 15px 0; }
+.plan-step { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border: 1px solid #17231e; border-radius: 8px; background: #060d09; color: #62756a; }
 .plan-step span { font: 9px "DM Mono", monospace; }
 .plan-step b { font-size: 10px; flex: 1; font-weight: 500; }
-.plan-step.active { color: #8eeaad; }
+.plan-step.active { border-color: #1f422e; background: #091710; color: #8eeaad; }
 .not-connected { text-align: center; color: #4f6258; font: 8px "DM Mono", monospace; padding-top: 9px; }
 .validation-grid {
   display: grid;
@@ -208,7 +209,7 @@ button { cursor: pointer; }
 .verdict-state { margin-left: auto; border: 1px solid #2c3a33; color: #73857c; padding: 9px 13px; border-radius: 8px; font: 9px "DM Mono", monospace; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 1200px) { .hero-grid, .content-grid, .two-col, .patch-layout { grid-template-columns: 1fr; } .validation-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1200px) { .hero-grid, .content-grid, .two-col { grid-template-columns: 1fr; } .validation-grid { grid-template-columns: 1fr; } }
 
 
 
