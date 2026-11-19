@@ -1275,10 +1275,30 @@ def apply_function_patch(
                 old_body_lines.append(line_str)
         old_raw = "\n".join(old_body_lines).strip()
 
-        if old_raw and old_raw in code:
-            patched = code.replace(old_raw, replacement_block, 1)
+        code_norm = code.replace("\r\n", "\n")
+        old_raw_norm = old_raw.replace("\r\n", "\n")
+        replacement_norm = replacement_block.replace("\r\n", "\n")
+
+        if old_raw_norm and old_raw_norm in code_norm:
+            patched_norm = code_norm.replace(old_raw_norm, replacement_norm, 1)
         else:
-            patched = code + "\n" + replacement_block
+            old_lines = [l.strip() for l in old_raw_norm.splitlines() if l.strip()]
+            code_lines = code_norm.splitlines()
+            match_start = -1
+            if old_lines:
+                for idx in range(len(code_lines) - len(old_lines) + 1):
+                    if all(code_lines[idx + j].strip() == old_lines[j] for j in range(len(old_lines))):
+                        match_start = idx
+                        break
+            if match_start != -1:
+                prefix = "\n".join(code_lines[:match_start])
+                suffix = "\n".join(code_lines[match_start + len(old_lines):])
+                patched_norm = (prefix + "\n" if prefix else "") + replacement_norm + ("\n" + suffix if suffix else "")
+            else:
+                patched_norm = code_norm + "\n" + replacement_norm
+
+        newline = "\r\n" if "\r\n" in code else "\n"
+        patched = patched_norm.replace("\n", newline) if newline == "\r\n" else patched_norm
 
         try:
             ast.parse(patched)
@@ -1465,6 +1485,8 @@ def run_security_validation(
     sandbox: Path,
     target_rule: str,
     target_file: Path | None = None,
+    target_line: int | None = None,
+    original_file: Path | None = None,
 ):
     data = run_bandit(str(sandbox))
     findings = data.get(
@@ -1475,20 +1497,55 @@ def run_security_validation(
     target_filename = target_file.name if target_file else None
 
     if target_file and target_filename:
-        file_findings = [
-            f for f in findings
-            if Path(f.get("filename", "")).name == target_filename
-            and f.get("test_id") == target_rule
-        ]
-
         file_bandit = run_bandit(str(target_file))
         direct_file_findings = [
             f for f in file_bandit.get("results", [])
             if f.get("test_id") == target_rule
         ]
 
-        target_removed = (len(file_findings) == 0 or len(direct_file_findings) == 0)
-        target_findings = file_findings if len(file_findings) <= len(direct_file_findings) else direct_file_findings
+        file_findings = [
+            f for f in findings
+            if Path(f.get("filename", "")).name == target_filename
+            and f.get("test_id") == target_rule
+        ]
+
+        orig_file_findings = []
+        if original_file and original_file.exists():
+            orig_bandit = run_bandit(str(original_file))
+            orig_file_findings = [
+                f for f in orig_bandit.get("results", [])
+                if f.get("test_id") == target_rule
+            ]
+
+        has_target_at_line = False
+        if target_line is not None:
+            has_target_at_line = any(
+                abs(int(f.get("line_number", 0)) - int(target_line)) <= 3
+                for f in direct_file_findings
+            )
+
+        if len(direct_file_findings) == 0 or len(file_findings) == 0:
+            target_removed = True
+        elif target_line is not None and not has_target_at_line:
+            target_removed = True
+        elif orig_file_findings and len(direct_file_findings) < len(orig_file_findings):
+            target_removed = True
+        else:
+            target_removed = False
+
+        if target_removed:
+            if len(direct_file_findings) == 0:
+                module_status = "0 finding(s) (ALL VULNERABILITIES IN FILE ELIMINATED)"
+            elif target_line is not None:
+                module_status = f"Target line {target_line} remediated ({len(direct_file_findings)} other occurrence(s) elsewhere in file)"
+            else:
+                module_status = f"{len(direct_file_findings)} remaining (TARGET FINDING ELIMINATED)"
+            rule_status = "REMOVED (Verified Safe)"
+            target_findings = []
+        else:
+            module_status = f"{len(direct_file_findings)} finding(s) (FOUND)"
+            rule_status = "FOUND"
+            target_findings = direct_file_findings
     else:
         target_findings = [
             finding
@@ -1496,13 +1553,15 @@ def run_security_validation(
             if finding.get("test_id") == target_rule
         ]
         target_removed = len(target_findings) == 0
+        rule_status = "REMOVED (Verified Safe)" if target_removed else "FOUND"
 
     output_lines = [
         f"Total findings across repository: {len(findings)}",
-        f"Patched module ({target_filename or 'target'}): "
-        + ("0 findings (VULNERABILITY REMOVED)" if target_removed else f"{len(target_findings)} finding(s) (FOUND)"),
-        f"Target rule {target_rule}: " + ("REMOVED" if target_removed else "FOUND"),
     ]
+    if target_file and target_filename:
+        output_lines.append(f"Patched module ({target_filename}): {module_status}")
+    output_lines.append(f"Target rule {target_rule}: {rule_status}")
+
     return {
         "passed": target_removed,
         "target_removed": target_removed,
@@ -2522,6 +2581,8 @@ def validate(request: ValidateRequest):
         sandbox=sandbox,
         target_rule=finding.get("test_id"),
         target_file=target,
+        target_line=request.line,
+        original_file=file_path,
     )
     verified = (
         regression["passed"]
