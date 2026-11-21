@@ -1,0 +1,37 @@
+# Vercel Ignore File
+# Prevents uploading heavy runtime/experiment directories to Vercel
+
+.git
+.github
+.vercel
+node_modules
+**/node_modules
+workspace
+workspace/**
+sample_repo
+sample_repo/**
+tests
+tests/**
+reports
+reports/**
+data
+data/**
+docs
+docs/**
+*.zip
+*.bak
+*.pyc
+__pycache__
+**/*.pyc
+**/*__pycache__*
+.pytest_cache
+**/.pytest_cache
+analyze_*.py
+combine_results.py
+create_benchmark_table.py
+run_*.py
+docker-compose.yml
+EVAL2.md
+README_FINAL.md
+bandit-report.json
+benchmark_bandit.json
