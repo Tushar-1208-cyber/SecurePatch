@@ -32,3 +32,6 @@ workspace/validation_status.json
 *.bak
 .DS_Store
 Thumbs.db
+
+.vercel
+.env*
