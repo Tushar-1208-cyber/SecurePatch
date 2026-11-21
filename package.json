@@ -1,0 +1,9 @@
+{
+  "name": "securepatch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SecurePatch - AI Security Engine for Automated Vulnerability Detection & AST Remediation",
+  "scripts": {
+    "build": "npm --prefix frontend install && npm --prefix frontend run build"
+  }
+}
