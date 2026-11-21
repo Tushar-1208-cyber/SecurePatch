@@ -1,7 +1,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const API = "http://127.0.0.1:8000";
+const API = import.meta.env.VITE_API_URL || "";
 
 const AI_LAB_STORAGE_KEY = "securepatch_ai_lab_state";
 
