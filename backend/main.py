@@ -44,14 +44,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,12 +55,21 @@ app.add_middleware(
 
 # =========================================================
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SANDBOX_ROOT = PROJECT_ROOT / "workspace" / "sandbox_repo"
-REPOSITORY_ROOT = PROJECT_ROOT / "workspace" / "repositories"
+IS_SERVERLESS = bool(
+    os.environ.get("VERCEL")
+    or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    or not os.access(PROJECT_ROOT, os.W_OK)
+)
+WORKSPACE_BASE = (Path("/tmp") / "workspace") if IS_SERVERLESS else (PROJECT_ROOT / "workspace")
+SANDBOX_ROOT = WORKSPACE_BASE / "sandbox_repo"
+REPOSITORY_ROOT = WORKSPACE_BASE / "repositories"
 # Persistent validation state.
 # This survives Uvicorn --reload, unlike LAST_VALIDATION_STATUS.
-VALIDATION_MARKER = PROJECT_ROOT / "workspace" / "validation_status.json"
-REPOSITORY_ROOT.mkdir(parents=True, exist_ok=True)
+VALIDATION_MARKER = WORKSPACE_BASE / "validation_status.json"
+try:
+    REPOSITORY_ROOT.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 # Local demo state. For a multi-user deployment this should become
 # per-repository/per-validation state instead of a global variable.
 LAST_VALIDATION_STATUS = None
@@ -2651,10 +2653,13 @@ def health():
 # AI / RAG MID-SEM FEATURES
 
 # =========================================================
-RAG_ROOT = PROJECT_ROOT / "workspace" / "rag_chroma"
-GENERATED_TEST_ROOT = PROJECT_ROOT / "workspace" / "generated_tests"
-RAG_ROOT.mkdir(parents=True, exist_ok=True)
-GENERATED_TEST_ROOT.mkdir(parents=True, exist_ok=True)
+RAG_ROOT = WORKSPACE_BASE / "rag_chroma"
+GENERATED_TEST_ROOT = WORKSPACE_BASE / "generated_tests"
+try:
+    RAG_ROOT.mkdir(parents=True, exist_ok=True)
+    GENERATED_TEST_ROOT.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 
 def get_rag(repo: Path) -> RepositoryRAG:
