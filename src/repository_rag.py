@@ -5,9 +5,18 @@ import re
 from pathlib import Path
 from typing import Any
 
-import chromadb
-from sentence_transformers import SentenceTransformer
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+try:
+    import chromadb
+    from sentence_transformers import SentenceTransformer
+    HAS_CHROMA = True
+except Exception:
+    HAS_CHROMA = False
+
+try:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    HAS_SPLITTER = True
+except Exception:
+    HAS_SPLITTER = False
 
 
 DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -63,38 +72,52 @@ def _chunks(text: str) -> list[dict[str, Any]]:
     if not text:
         return []
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP,
-        length_function=len,
-        add_start_index=True,
-        strip_whitespace=True,
-    )
-
-    documents = splitter.create_documents([text])
-    result = []
-
-    for document in documents:
-        content = document.page_content
-        start_index = document.metadata.get("start_index", 0)
-
-        if not content:
-            continue
-
-        start_line = text[:start_index].count("\n") + 1
-        end_line = start_line + content.count("\n")
-
-        result.append({
-            "start_line": start_line,
-            "end_line": end_line,
-            "text": content,
-        })
-
-    return result
+    if HAS_SPLITTER:
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP,
+            length_function=len,
+            add_start_index=True,
+            strip_whitespace=True,
+        )
+        documents = splitter.create_documents([text])
+        result = []
+        for document in documents:
+            content = document.page_content
+            start_index = document.metadata.get("start_index", 0)
+            if not content:
+                continue
+            start_line = text[:start_index].count("\n") + 1
+            end_line = start_line + content.count("\n")
+            result.append({
+                "start_line": start_line,
+                "end_line": end_line,
+                "text": content,
+            })
+        return result
+    else:
+        lines = text.splitlines()
+        result = []
+        chunk_lines = 60
+        overlap = 15
+        i = 0
+        while i < len(lines):
+            end = min(len(lines), i + chunk_lines)
+            chunk = "\n".join(lines[i:end])
+            if chunk.strip():
+                result.append({
+                    "start_line": i + 1,
+                    "end_line": end,
+                    "text": chunk,
+                })
+            if end >= len(lines):
+                break
+            i += chunk_lines - overlap
+        return result
 
 
 class RepositoryRAG:
-    """Local repository RAG using SentenceTransformers + persistent Chroma."""
+    """Local repository RAG using SentenceTransformers + persistent Chroma, with lightweight in-memory fallback."""
 
     def __init__(
         self,
@@ -102,28 +125,24 @@ class RepositoryRAG:
         embedding_model: str = DEFAULT_EMBEDDING_MODEL,
     ):
         self.persist_dir = Path(persist_dir)
-
-        self.persist_dir.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
+        try:
+            self.persist_dir.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
         self.embedding_model_name = embedding_model
+        self.has_chroma = HAS_CHROMA
+        self._in_memory: dict[str, list[dict[str, Any]]] = {}
 
-        self.embedder = SentenceTransformer(
-            embedding_model
-        )
-
-        self.client = chromadb.PersistentClient(
-            path=str(self.persist_dir)
-        )
-
-        self.collection = self.client.get_or_create_collection(
-            name="securepatch_repository",
-            metadata={
-                "hnsw:space": "cosine"
-            },
-        )
+        if self.has_chroma:
+            try:
+                self.embedder = SentenceTransformer(embedding_model)
+                self.client = chromadb.PersistentClient(path=str(self.persist_dir))
+                self.collection = self.client.get_or_create_collection(
+                    name="securepatch_repository",
+                    metadata={"hnsw:space": "cosine"},
+                )
+            except Exception:
+                self.has_chroma = False
 
     @staticmethod
     def _repo_id(repo: Path) -> str:
@@ -250,30 +269,38 @@ class RepositoryRAG:
 
         # Generate embeddings and store in Chroma
         if documents:
+            if self.has_chroma:
+                embeddings = self.embedder.encode(
+                    documents,
+                    normalize_embeddings=True,
+                    show_progress_bar=False,
+                    batch_size=32,
+                ).tolist()
 
-            embeddings = self.embedder.encode(
-                documents,
-                normalize_embeddings=True,
-                show_progress_bar=False,
-                batch_size=32,
-            ).tolist()
-
-            batch_size = 128
-
-            for start in range(
-                0,
-                len(documents),
-                batch_size,
-            ):
-
-                end = start + batch_size
-
-                self.collection.add(
-                    ids=ids[start:end],
-                    documents=documents[start:end],
-                    metadatas=metadatas[start:end],
-                    embeddings=embeddings[start:end],
-                )
+                batch_size = 128
+                for start in range(
+                    0,
+                    len(documents),
+                    batch_size,
+                ):
+                    end = start + batch_size
+                    self.collection.add(
+                        ids=ids[start:end],
+                        documents=documents[start:end],
+                        metadatas=metadatas[start:end],
+                        embeddings=embeddings[start:end],
+                    )
+            else:
+                self._in_memory[repo_id] = [
+                    {
+                        "repo_id": repo_id,
+                        "file": meta["file"],
+                        "start_line": meta["start_line"],
+                        "end_line": meta["end_line"],
+                        "text": doc,
+                    }
+                    for doc, meta in zip(documents, metadatas)
+                ]
 
         return {
             "files_indexed": len(
@@ -302,6 +329,23 @@ class RepositoryRAG:
         repo_id = self._repo_id(
             Path(repo)
         )
+
+        if not self.has_chroma:
+            chunks = self._in_memory.get(repo_id, [])
+            if not chunks:
+                self.index(Path(repo))
+                chunks = self._in_memory.get(repo_id, [])
+            if not chunks:
+                return []
+            query_words = set(re.findall(r"\w+", query.lower()))
+            scored = []
+            for item in chunks:
+                item_words = set(re.findall(r"\w+", item["text"].lower()))
+                overlap = len(query_words & item_words)
+                score = overlap / (len(query_words) or 1)
+                scored.append((score, {**item, "score": round(score, 3)}))
+            scored.sort(key=lambda x: x[0], reverse=True)
+            return [x[1] for x in scored[:k]]
 
         total = self.collection.count()
 
