@@ -12,6 +12,7 @@ import {
   Download,
   ExternalLink,
   FileCode2,
+  FileText,
   GitBranch,
   GitFork,
   GitPullRequest,
@@ -1015,6 +1016,70 @@ async function generatePatch(model = "qwen2.5-coder") {
 
         <div className="sidebar-bottom">
 
+          <div style={{
+            background: "rgba(8, 27, 18, 0.75)",
+            border: "1px solid #1f4d33",
+            borderRadius: "8px",
+            padding: "9px 11px",
+            marginBottom: "8px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "7px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "10px", color: "#68d391", fontWeight: 700, letterSpacing: "0.5px" }}>DEVELOPER</span>
+              <span style={{ fontSize: "9px", background: "rgba(0, 255, 136, 0.12)", color: "#00ff88", padding: "1px 5px", borderRadius: "3px" }}>AI / Full Stack</span>
+            </div>
+            <div style={{ fontSize: "11px", color: "#f7fafc", fontWeight: 600 }}>Tushar Gupta</div>
+            <div style={{ display: "flex", gap: "5px" }}>
+              <a
+                href="https://docs.google.com/document/d/12kp40eQEFVnNsZozinhUCJY3VO0wnCCuwOZ669rAjWU/edit?tab=t.0"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  padding: "4px 6px",
+                  background: "#00ff88",
+                  color: "#020d07",
+                  borderRadius: "4px",
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+                title="Open Tushar's Resume in Google Docs"
+              >
+                <FileText size={11} />
+                <span>Resume ↗</span>
+              </a>
+              <a
+                href="/resume.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "3px",
+                  padding: "4px 8px",
+                  background: "rgba(255, 255, 255, 0.05)",
+                  border: "1px solid #2d3748",
+                  color: "#cbd5e0",
+                  borderRadius: "4px",
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+                title="Open / Download PDF"
+              >
+                <span>PDF ⤓</span>
+              </a>
+            </div>
+          </div>
+
           <div className="system-card">
 
             <div className="system-dot" />
@@ -1083,6 +1148,31 @@ async function generatePatch(model = "qwen2.5-coder") {
             >
               <User size={13} />
               <span>@Tushar-1208-cyber ↗</span>
+            </a>
+
+            <a
+              href="https://docs.google.com/document/d/12kp40eQEFVnNsZozinhUCJY3VO0wnCCuwOZ669rAjWU/edit?tab=t.0"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 12px",
+                background: "rgba(0, 255, 136, 0.08)",
+                border: "1px solid rgba(0, 255, 136, 0.35)",
+                borderRadius: "6px",
+                color: "#00ff88",
+                fontSize: "11px",
+                fontFamily: "DM Mono, monospace",
+                textDecoration: "none",
+                fontWeight: 600,
+                transition: "all 0.15s ease",
+              }}
+              title="View Tushar's Full Stack & AI Developer Resume (Google Docs)"
+            >
+              <FileText size={13} />
+              <span>Resume ↗</span>
             </a>
 
             <div className="live-status">
@@ -1796,6 +1886,36 @@ function Overview({
                   >
                     <User size={12} style={{ color: "#00ff88" }} />
                     <span>My GitHub (Tushar) ↗</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        "https://docs.google.com/document/d/12kp40eQEFVnNsZozinhUCJY3VO0wnCCuwOZ669rAjWU/edit?tab=t.0",
+                        "_blank",
+                        "noopener,noreferrer"
+                      )
+                    }
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      background: "rgba(0, 255, 136, 0.08)",
+                      border: "1px solid rgba(0, 255, 136, 0.35)",
+                      color: "#00ff88",
+                      padding: "5px 11px",
+                      borderRadius: "6px",
+                      fontSize: "10px",
+                      fontFamily: "DM Mono, monospace",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      transition: "all 0.15s ease",
+                    }}
+                    title="View Tushar's Full Stack & AI Developer Resume"
+                  >
+                    <FileText size={12} style={{ color: "#00ff88" }} />
+                    <span>My Resume (Tushar) ↗</span>
                   </button>
 
                   <button
